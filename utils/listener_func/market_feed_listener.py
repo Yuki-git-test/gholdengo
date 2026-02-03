@@ -354,6 +354,31 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     )
                 except Exception as e:
                     debug_log(f"Exception in market_snipe_handler: {e}", highlight=True)
+            elif lowest_market == 0:
+                # First listing, no lowest market to compare
+                pretty_log(
+                    "info",
+                    f"First listing detected for {display_pokemon_name} with ID {original_id}. Treating as potential snipe.",
+                )
+                lowest_market = "?"
+                try:
+                    await market_snipe_handler(
+                        bot=bot,
+                        poke_name=poke_name,
+                        listed_price=listed_price,
+                        id=original_id,
+                        lowest_market=lowest_market,
+                        amount=int(amount),
+                        listing_seen=listing_seen,
+                        guild=message.guild,
+                        embed=embed,
+                    )
+                except Exception as e:
+                    debug_log(f"Exception in market_snipe_handler: {e}", highlight=True)
+                    pretty_log(
+                        "error",
+                        f"Error handling market snipe for {display_pokemon_name} with ID {original_id}: {e}",
+                    )
 
             # Check for market alerts
             if not market_alert_cache:
