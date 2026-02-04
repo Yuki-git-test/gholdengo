@@ -7,6 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from Constants.variables import DATA_DIR, DEFAULT_GUILD_ID
+from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.cache.cache_list import clear_processed_messages_cache
 from utils.cache.central_cache_loader import load_all_cache
 from utils.db.get_pg_pool import get_pg_pool
@@ -89,11 +90,17 @@ async def on_ready():
     except Exception as e:
         pretty_log("error", f"Slash sync failed: {e}")
 
+    # Sync commands to VNA server
+    try:
+        await bot.tree.sync(guild=discord.Object(id=VNA_SERVER_ID))
+        pretty_log("info", f"Slash commands synced to guild {VNA_SERVER_ID}")
+    except Exception as e:
+        pretty_log("error", f"Slash sync to VNA server failed: {e}")
+
     # Start the hourly cache refresh task
     if not refresh_all_caches.is_running():
         refresh_all_caches.start()
         pretty_log(message="✅ Started hourly cache refresh task", tag="ready")
-
 
     try:
         await bot.change_presence(

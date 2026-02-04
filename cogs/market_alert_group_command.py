@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.essentials.command_safe import run_command_safe
 from utils.essentials.pokemon_autocomplete import (
     pokemon_autocomplete,
@@ -27,6 +28,7 @@ class Market_Alert_Group_Command(commands.Cog):
     market_alert = app_commands.Group(
         name="market-alert",
         description="Manage your market alerts.",
+        guild_ids=[VNA_SERVER_ID],
     )
 
     # 🍭──────────────────────────────
