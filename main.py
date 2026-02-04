@@ -70,7 +70,7 @@ async def load_extensions():
                         tag="error",
                     )
     _loaded_count = len(loaded_cogs)
-    pretty_log("ready", f"✅ Loaded { _loaded_count} cogs")
+    pretty_log("ready", f"✅ Loaded { _loaded_count} cogs")#
 
 
 # ---- Lifecycle ----#
