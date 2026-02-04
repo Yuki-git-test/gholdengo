@@ -73,7 +73,7 @@ async def load_extensions():
     pretty_log("ready", f"✅ Loaded { _loaded_count} cogs")
 
 
-# ---- Lifecycle ----
+# ---- Lifecycle ----#
 @bot.event
 async def on_ready():
     # Guard for type checker: bot.user may be Optional
