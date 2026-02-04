@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from Constants.aesthetic import *
-from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS
+from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS, YUKI_USER_ID
 from utils.cache.cache_list import market_alert_cache
 from utils.db.market_alert_db import update_market_alert
 from utils.db.market_alert_user import fetch_user_role

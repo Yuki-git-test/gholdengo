@@ -2,7 +2,11 @@ import discord
 from discord.ext import commands
 
 from Constants.aesthetic import *
-from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS, KHY_USER_ID
+from Constants.vn_allstars_constants import (
+    KHY_USER_ID,
+    VN_ALLSTARS_EMOJIS,
+    YUKI_USER_ID,
+)
 from utils.cache.cache_list import market_alert_cache
 from utils.db.market_alert_db import (
     remove_all_market_alerts_for_user,
@@ -45,7 +49,7 @@ async def remove_market_alert_func(
         if not existing_alerts:
             await loader.error(content="You have no market alerts to remove.")
             return
-
+        is_yuki = user_id == YUKI_USER_ID
         # Get count of alerts to be removed
         alert_count = len(existing_alerts)
 
@@ -67,6 +71,7 @@ async def remove_market_alert_func(
         # Fetch max alerts for logging
         alert_user = await fetch_market_alert_user(bot, user_id)
         max_alerts = alert_user["max_alerts"] if alert_user else "N/A"
+        max_alerts_str = f"**Max Alerts Allowed:** {max_alerts}" if not is_yuki else ""
 
         # Send log to server log
         embed = discord.Embed(
@@ -74,7 +79,7 @@ async def remove_market_alert_func(
             description=(
                 f"**User:** {user.mention}\n"
                 f"**Alerts Removed:** {alert_count}\n"
-                f"**Max Alerts Allowed:** {max_alerts}\n"
+                f"{max_alerts_str}"
             ),
         )
         embed = design_embed(embed=embed, user=user)
@@ -133,9 +138,14 @@ async def remove_market_alert_func(
         else:
             new_alerts_used = 0
 
+        alerts_used_str = (
+            f"**Alerts Used:** {new_alerts_used}/{max_alerts}\n"
+            if user_id != YUKI_USER_ID
+            else f"**Alerts Used:** {new_alerts_used}\n"
+        )
         # Send success message
         desc = (
-            f"**Alerts Used:** {new_alerts_used}/{max_alerts}\n"
+            f"{alerts_used_str}"
             f"**Pokemon:** {target_name.title()} #{dex_number}\n"
             f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
             f"**Channel:** <#{channel_id}>\n"
@@ -156,7 +166,7 @@ async def remove_market_alert_func(
         )
         desc = (
             f"**User:** {user.mention}\n"
-            f"**Alerts Used:** {new_alerts_used}/{max_alerts}\n"
+            f"{alerts_used_str}"
             f"**Pokemon:** {target_name.title()} #{dex_number}\n"
             f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
             f"**Channel:** <#{channel_id}>\n"

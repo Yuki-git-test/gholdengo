@@ -201,11 +201,19 @@ async def add_market_alert_func(
             updated_user_info = await fetch_market_alert_user(bot, user_id)
             current_alerts_used = updated_user_info["alerts_used"]
             current_max_alerts = updated_user_info["max_alerts"]
-
+            alerts_used_str = (
+                f"**Alerts:** {current_alerts_used}/{current_max_alerts}\n"
+            )
+            if user.id == YUKI_USER_ID:
+                alerts_used_str = f"**Alerts Used:** {current_alerts_used}\n"
+            else:
+                alerts_used_str = (
+                    f"**Alerts:** {current_alerts_used}/{current_max_alerts}\n"
+                )
             embed = discord.Embed(
                 title="✅ Market Alert Added",
                 description=(
-                    f"**Alerts:** {current_alerts_used}/{current_max_alerts}\n"
+                    f"{alerts_used_str}"
                     f"**Pokemon:** {target_name.title()} #{dex_number}\n"
                     f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
                     f"**Channel:** {channel.mention}\n"

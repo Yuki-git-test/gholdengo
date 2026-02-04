@@ -2,7 +2,11 @@ import discord
 from discord.ui import Button, View
 
 from Constants.aesthetic import *
-from Constants.vn_allstars_constants import DEFAULT_EMBED_COLOR, VN_ALLSTARS_EMOJIS
+from Constants.vn_allstars_constants import (
+    DEFAULT_EMBED_COLOR,
+    VN_ALLSTARS_EMOJIS,
+    YUKI_USER_ID,
+)
 from utils.db.market_alert_user import fetch_market_alert_user
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.design_embed import design_embed
@@ -56,10 +60,12 @@ class Market_Alerts_Paginator(View):
         start = self.page * self.per_page
         end = start + self.per_page
         page_alerts = self.alerts[start:end]
-
+        alerts_user_str = f"**Alerts Used:** {self.alerts_used}/{self.max_alerts}"
+        if self.user.id == YUKI_USER_ID:
+            alerts_user_str = f"**Alerts Used:** {self.alerts_used}"
         embed = discord.Embed(
             title=f"🛍️ Market Alerts",
-            description=f"**Alerts Used:** {self.alerts_used}/{self.max_alerts}",
+            description=alerts_user_str,
             color=DEFAULT_EMBED_COLOR,
         )
         for idx, alert in enumerate(page_alerts, start=1 + self.page * self.per_page):
