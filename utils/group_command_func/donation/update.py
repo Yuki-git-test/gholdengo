@@ -30,7 +30,7 @@ from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer
-
+from .update_leaderboard import update_leaderboard_func
 
 async def check_monthly_and_update_donation_status(
     bot: commands.Bot,
@@ -316,3 +316,5 @@ async def update_donation_func(
         bot=bot,
         member=member,
     )
+    if total_donations:
+        await update_leaderboard_func(bot, member.guild)
