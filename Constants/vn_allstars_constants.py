@@ -490,7 +490,8 @@ class VN_ALLSTARS_CATEGORIES:
 #       VN_ALLSTARS_ROLES
 # 💦☁────────────────────────────────────────────💦☁
 class VN_ALLSTARS_ROLES:
-    monthly_donator = 1328374835868336128
+    
+    monthly_donator = 1459194610889789592
     clan_break = 1445374171763965952
     probation = 1426299800386539521
     ee_spawn_ping = 1443756412613431449

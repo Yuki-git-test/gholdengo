@@ -142,16 +142,18 @@ async def create_leaderboard_embed(
                 )
                 if user_position:
                     description = f"You are currently ranked **#{user_position}** with **{format_comma_pokecoins(user_donations)}** in donations."
-        elif not user and context == "total":
-            note = """If you want to enable any of the perks available in <#910166647917117440> . Donate to `@beaterxyz` or `@yki.on` in **this channel only**
+
+
+
+        embed.description = description
+
+    note = """If you want to enable any of the perks available in <#910166647917117440> . Donate to `@beaterxyz` or `@yki.on` in **this channel only**
 -# - Don't do any troll donations
 -# - Minimum donation value is 500k
 -# - Don't ping to ask for perks will be automatically given when seen by mods
 -# - We dont really require `;clan donations`
 """
-            embed.add_field(name="Notes:", value=note, inline=False)
-
-        embed.description = description
+    embed.add_field(name="Notes:", value=note, inline=False)
     return embed
 
 
