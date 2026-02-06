@@ -277,3 +277,24 @@ async def fetch_all_donation_records(bot: discord.Client):
             include_trace=True,
         )
         return []
+
+async def delete_donation_record(bot: discord.Client, user_id: int):
+    """Delete a donation record for a user."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                DELETE FROM donations WHERE user_id = $1
+                """,
+                user_id,
+            )
+            pretty_log(
+                message=f"✅ Deleted donation record for user ID: {user_id}",
+                tag="db",
+            )
+    except Exception as e:
+        pretty_log(
+            message=f"❌ Failed to delete donation record for user ID: {user_id}: {e}",
+            tag="error",
+            include_trace=True,
+        )

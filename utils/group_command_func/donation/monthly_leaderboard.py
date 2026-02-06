@@ -6,7 +6,7 @@ from discord.ui import Button, View
 
 from Constants.aesthetic import *
 from Constants.vn_allstars_constants import DEFAULT_EMBED_COLOR, VNA_SERVER_ID
-from utils.db.donations_db import fetch_all_donation_records
+from utils.db.donations_db import delete_donation_record, fetch_all_donation_records
 from utils.essentials.role_checks import *
 from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
@@ -14,6 +14,35 @@ from utils.visuals.pretty_defer import pretty_defer
 
 from .overall_leaderboard import Donation_Leaderboard_Paginator
 from .update_leaderboard import get_current_month_year
+
+
+async def filter_monthly_donation(
+    bot: commands.Bot, guild: discord.Guild, donation_records
+):
+    """Filter out members who are not eligible for the trophy leaderboard."""
+    filtered_records = []
+    for donation_info in donation_records:
+        user_id = donation_info["user_id"]
+        user = guild.get_member(user_id)
+        if user:
+            # Check if trophy is zero
+            if donation_info["monthly_donations"] == 0:
+                pretty_log(
+                    tag="info",
+                    message=f"Skipping user ID {user_id} with zero monthly donations.",
+                    label="Trophy Leaderboard Embed",
+                )
+                continue
+
+            filtered_records.append(donation_info)
+        else:
+            # dont inclue those who are not in the server, also log it
+            pretty_log(
+                tag="info",
+                message=f"Skipping user ID {user_id} who is not in the server.",
+                label="Trophy Leaderboard Embed",
+            )
+    return filtered_records
 
 
 async def view_monthly_donation_leaderboard_func(bot, interaction: discord.Interaction):
@@ -35,6 +64,7 @@ async def view_monthly_donation_leaderboard_func(bot, interaction: discord.Inter
     sorted_records = sorted(
         donation_records, key=lambda x: x["monthly_donations"], reverse=True
     )
+    sorted_records = await filter_monthly_donation(bot, guild, sorted_records)
     try:
         paginator = Donation_Leaderboard_Paginator(
             bot=bot,
