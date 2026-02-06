@@ -298,3 +298,26 @@ async def delete_donation_record(bot: discord.Client, user_id: int):
             tag="error",
             include_trace=True,
         )
+
+async def total_monthly_donations(bot: discord.Client):
+    """Calculate the total monthly donations across all users."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            result = await conn.fetchval(
+                """
+                SELECT SUM(monthly_donations) FROM donations
+                """
+            )
+            total = result if result is not None else 0
+            pretty_log(
+                message=f"✅ Calculated total monthly donations: {total}",
+                tag="db",
+            )
+            return total
+    except Exception as e:
+        pretty_log(
+            message=f"❌ Failed to calculate total monthly donations: {e}",
+            tag="error",
+            include_trace=True,
+        )
+        return 0

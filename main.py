@@ -12,7 +12,7 @@ from utils.cache.cache_list import clear_processed_messages_cache
 from utils.cache.central_cache_loader import load_all_cache
 from utils.db.get_pg_pool import get_pg_pool
 from utils.logs.pretty_log import pretty_log, set_ghouldengo_bot
-
+from utils.schedule.scheduler import setup_scheduler
 # ---- Intents / Bot ----
 intents = discord.Intents.default()
 intents.members = True
@@ -127,7 +127,7 @@ async def main():
         )
         return  # Exit if DB connection fails
     # Start the scheduler
-    # await setup_scheduler(bot)
+    await setup_scheduler(bot)
 
     # Register persistent views
     # await register_persistent_views(bot)

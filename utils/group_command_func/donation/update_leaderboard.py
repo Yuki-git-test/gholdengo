@@ -57,6 +57,18 @@ def get_current_month_year():
     return month, now.year
 
 
+def get_last_month_year():
+    now = datetime.now()
+    if now.month == 1:
+        last_month = 12
+        year = now.year - 1
+    else:
+        last_month = now.month - 1
+        year = now.year
+    month = MONTH_MAP.get(last_month, "Unknown").title()
+    return month, year
+
+
 async def create_leaderboard_embed(
     bot, guild: discord.Guild, context: str, user: discord.Member = None
 ):
@@ -142,8 +154,6 @@ async def create_leaderboard_embed(
                 )
                 if user_position:
                     description = f"You are currently ranked **#{user_position}** with **{format_comma_pokecoins(user_donations)}** in donations."
-
-
 
         embed.description = description
 
