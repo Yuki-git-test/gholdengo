@@ -111,8 +111,8 @@ class Donation_Group_Command(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        total_donations: Optional[int] = None,
-        monthly_donations: Optional[int] = None,
+        total_donations: Optional[str] = None,
+        monthly_donations: Optional[str] = None,
     ):
         slash_cmd_name = "donation update"
         await run_command_safe(

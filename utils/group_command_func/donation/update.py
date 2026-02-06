@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 from Constants.aesthetic import *
-from Constants.donation_config import DONATION_MILESTONE_MAP
+from Constants.donation_config import DONATION_MILESTONE_MAP, MONTHLY_DONATION_VALUE
 from Constants.vn_allstars_constants import (
     DEFAULT_EMBED_COLOR,
     KHY_USER_ID,
@@ -22,14 +22,15 @@ from utils.db.donations_db import (
     upsert_donation_record,
 )
 from utils.essentials.format import format_comma_pokecoins
+from utils.essentials.parsers import parse_compact_number
 from utils.essentials.role_checks import *
+from utils.functions.webhook_func import send_webhook
 from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer
-from Constants.donation_config import MONTHLY_DONATION_VALUE
-from utils.functions.webhook_func import send_webhook
+
 
 async def check_monthly_and_update_donation_status(
     bot: commands.Bot,
@@ -212,8 +213,8 @@ async def update_donation_func(
     bot: commands.Bot,
     interaction: discord.Interaction,
     member: discord.Member,
-    total_donations: int = None,
-    monthly_donations: int = None,
+    total_donations: str = None,
+    monthly_donations: str = None,
 ):
     """Update the donation record for a user."""
     #  Defer
@@ -225,6 +226,23 @@ async def update_donation_func(
     if not is_staff_member(interaction.user):
         await loader.error(content="Only staff members can use this command.")
         return
+    if total_donations is None and monthly_donations is None:
+        await loader.error(content="Please provide at least one value to update.")
+        return
+
+    if total_donations:
+        total_donations = parse_compact_number(total_donations)
+        if not total_donations or total_donations < 0:
+            await loader.error(content="Please provide a valid total donations value.")
+            return
+
+    if monthly_donations:
+        monthly_donations = parse_compact_number(monthly_donations)
+        if not monthly_donations or monthly_donations < 0:
+            await loader.error(
+                content="Please provide a valid monthly donations value."
+            )
+            return
 
     #  Fetch current donation record
     donation_record = await fetch_donation_record(bot, member.id)
