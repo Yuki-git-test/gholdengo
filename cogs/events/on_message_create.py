@@ -6,6 +6,11 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_TEXT_CHANNELS,
     VNA_SERVER_ID,
 )
+from utils.functions.donation_sticky_msg import check_and_send_sticky_msg
+from utils.listener_func.donation_listener import (
+    clan_donate_listener,
+    give_command_listener,
+)
 
 # ————————————————————————————————
 # 🩵 Import Listener Functions
@@ -22,6 +27,8 @@ MARKET_FEED_CHANNEL_IDS = {
     VN_ALLSTARS_TEXT_CHANNELS.shiny_feed,
     VN_ALLSTARS_TEXT_CHANNELS.l_m_gmax_feed,
 }
+
+CLAN_BANK_USER_NAMES = ["yki.on", "beaterxyz"]
 
 
 # 🐾────────────────────────────────────────────
@@ -80,7 +87,41 @@ class MessageCreateListener(commands.Cog):
             # ————————————————————————————————
             if message.channel.id in MARKET_FEED_CHANNEL_IDS:
                 await market_feeds_listener(self.bot, message)
-
+            # ————————————————————————————————
+            # 🩵 Clan Donations
+            # ————————————————————————————————
+            if message.channel.id == VN_ALLSTARS_TEXT_CHANNELS.clan_donations:
+                # Clan Treasury donation
+                if (
+                    content
+                    and "You successfully donated" in content
+                    and "VN Allstar" in content
+                ):
+                    pretty_log(
+                        "info",
+                        f"Detected clan donation message: {content}",
+                        label="DONATION_LISTENER",
+                    )
+                    await clan_donate_listener(self.bot, message)
+            if (
+                message.channel.id == VN_ALLSTARS_TEXT_CHANNELS.clan_donations
+                or message.channel.id == VN_ALLSTARS_TEXT_CHANNELS.khys_chamber
+            ):
+                # Clan Bank Donation
+                if (
+                    content
+                    and "gave" in content
+                    and "PokeCoins" in content
+                    and any(name in content for name in CLAN_BANK_USER_NAMES)
+                ):
+                    pretty_log(
+                        "info",
+                        f"Detected clan bank donation message: {content}",
+                        label="DONATION_LISTENER",
+                    )
+                    await give_command_listener(self.bot, message)
+            if message.channel.id == VN_ALLSTARS_TEXT_CHANNELS.clan_donations:
+                await check_and_send_sticky_msg(self.bot, message)
         except Exception as e:
             # 🛑────────────────────────────────────────────
             #        Unhandled on_message Error Handler

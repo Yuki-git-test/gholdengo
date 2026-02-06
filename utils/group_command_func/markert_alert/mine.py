@@ -72,11 +72,11 @@ class Market_Alerts_Paginator(View):
             role_str = (
                 f"<@&{alert['role_id']}>" if alert["role_id"] else "No role assigned"
             )
-
+            price = alert["max_price"]
             embed.add_field(
                 name=f"{idx}. {alert['pokemon'].title()} #{alert['dex']}",
                 value=(
-                    f"> - **Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {alert['max_price']}\n"
+                    f"> - **Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {price:,}\n"
                     f"> - **Channel:** <#{alert['channel_id']}>\n"
                     f"> - **Role:** {role_str}\n"
                 ),

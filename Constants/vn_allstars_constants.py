@@ -6,7 +6,8 @@ DEFAULT_EMBED_COLOR = 0xFFD700
 KHY_USER_ID = 952071312124313611
 POKEMEOW_APPLICATION_ID = 664508672713424926
 
-
+CLAN_BANK_ID = 824975437440352266
+MIN_DONATION_AMOUNT = 500_000
 # 💦☁────────────────────────────────────────────💦☁
 #       VN_ALLSTARS_TEXT_CHANNELS
 # 💦☁────────────────────────────────────────────💦☁
@@ -489,6 +490,7 @@ class VN_ALLSTARS_CATEGORIES:
 #       VN_ALLSTARS_ROLES
 # 💦☁────────────────────────────────────────────💦☁
 class VN_ALLSTARS_ROLES:
+    monthly_donator = 1328374835868336128
     clan_break = 1445374171763965952
     probation = 1426299800386539521
     ee_spawn_ping = 1443756412613431449

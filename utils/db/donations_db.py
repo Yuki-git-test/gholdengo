@@ -10,13 +10,14 @@ from utils.logs.pretty_log import pretty_log
     monthly_donations INT DEFAULT 0,
     monthly_donator_streak INT DEFAULT 0,
     permanent_monthly_donator BOOLEAN DEFAULT FALSE
+    monthly_donator BOOLEAN DEFAULT FALSE
 );"""
 
 
 async def upsert_donation_record(
     bot: discord.Client, user_id: int, user_name: str, total_donations: int = 0
 ):
-    """Insert or update a donation record for a user."""
+    """Insert or update a donation record for a user. Sets total_donations to the provided value (replaces, does not add)."""
     try:
         async with bot.pg_pool.acquire() as conn:
             await conn.execute(
@@ -25,7 +26,7 @@ async def upsert_donation_record(
                 VALUES ($1, $2, $3)
                 ON CONFLICT (user_id) DO UPDATE
                 SET user_name = EXCLUDED.user_name,
-                    total_donations = donations.total_donations + EXCLUDED.total_donations
+                    total_donations = EXCLUDED.total_donations
                 """,
                 user_id,
                 user_name,
@@ -101,6 +102,33 @@ async def update_total_donations(
         )
 
 
+async def update_monthly_donator_status(
+    bot: discord.Client, user_id: int, is_monthly_donator: bool
+):
+    """Update the monthly donator status for a user."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE donations
+                SET monthly_donator = $2
+                WHERE user_id = $1
+                """,
+                user_id,
+                is_monthly_donator,
+            )
+            pretty_log(
+                message=f"✅ Updated monthly donator status for user ID: {user_id} to {is_monthly_donator}",
+                tag="db",
+            )
+    except Exception as e:
+        pretty_log(
+            message=f"❌ Failed to update monthly donator status for user ID: {user_id}: {e}",
+            tag="error",
+            include_trace=True,
+        )
+
+
 async def update_monthly_donations(
     bot: discord.Client, user_id: int, monthly_donations: int
 ):
@@ -124,6 +152,34 @@ async def update_monthly_donations(
         pretty_log(
             message=f"❌ Failed to update monthly donations for user ID: {user_id}: {e}",
             tag="error",
+        )
+
+
+async def add_to_monthly_and_total_donations(
+    bot: discord.Client, user_id: int, amount: int
+):
+    """Add an amount to both monthly and total donations for a user."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE donations
+                SET total_donations = total_donations + $2,
+                    monthly_donations = monthly_donations + $2
+                WHERE user_id = $1
+                """,
+                user_id,
+                amount,
+            )
+            pretty_log(
+                message=f"✅ Added {amount} to monthly and total donations for user ID: {user_id}",
+                tag="db",
+            )
+    except Exception as e:
+        pretty_log(
+            message=f"❌ Failed to add to monthly and total donations for user ID: {user_id}: {e}",
+            tag="error",
+            include_trace=True,
         )
 
 
@@ -198,3 +254,26 @@ async def reset_monthly_donations(bot: discord.Client):
             tag="error",
             include_trace=True,
         )
+
+
+async def fetch_all_donation_records(bot: discord.Client):
+    """Fetch all donation records."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT * FROM donations
+                """
+            )
+            pretty_log(
+                message=f"✅ Fetched all donation records",
+                tag="db",
+            )
+            return [dict(record) for record in records]
+    except Exception as e:
+        pretty_log(
+            message=f"❌ Failed to fetch all donation records: {e}",
+            tag="error",
+            include_trace=True,
+        )
+        return []

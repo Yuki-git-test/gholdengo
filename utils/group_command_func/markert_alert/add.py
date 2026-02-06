@@ -21,7 +21,7 @@ from utils.essentials.parsers import (
     parse_special_mega_input,
     resolve_pokemon_input,
 )
-from utils.essentials.role_checks import has_special_role
+from utils.essentials.role_checks import *
 from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log

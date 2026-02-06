@@ -33,6 +33,7 @@ TAGS = {
     "cache": "🧀 CACHE",  # Cheese
     "schedule": "⏰ SCHEDULE",  # Alarm clock
     "coins": "🏅 COINS",
+    "donation": "💎 DONATION",
 }
 
 # -------------------- 🎨 Ghouldengo ANSI Colors --------------------
