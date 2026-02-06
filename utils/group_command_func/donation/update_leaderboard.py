@@ -95,7 +95,7 @@ async def create_leaderboard_embed(
         )
         return None
     # Create the embed
-    embed = discord.Embed(title=title, color=DEFAULT_EMBED_COLOR)
+    embed = discord.Embed(title=title, color=DEFAULT_EMBED_COLOR, timestamp=datetime.now())
     embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
     total_donators = len(donation_records)
     embed.set_footer(
@@ -164,6 +164,10 @@ async def create_leaderboard_embed(
 -# - We dont really require `;clan donations`
 """
     embed.add_field(name="Notes:", value=note, inline=False)
+    embed.set_footer(
+        text="Updated on",
+        icon_url=guild.icon.url if guild.icon else None,
+    )
     return embed
 
 
