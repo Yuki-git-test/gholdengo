@@ -41,7 +41,7 @@ async def check_monthly_and_update_donation_status(
     permanent_monthly_donator = donation_record.get("permanent_monthly_donator", False)
     monthly_donator_streak = donation_record.get("monthly_donator_streak", 0)
     monthly_donator = donation_record.get("monthly_donator", False)
-
+    milestone_roles_added_str = "\n\n**New Milestone Roles Added:**\n"
     """Check if the user's monthly donations meet the threshold and update their monthly donator status accordingly."""
     embed = discord.Embed(
         title="🎉 Donation Milestone Update",
@@ -101,6 +101,7 @@ async def check_monthly_and_update_donation_status(
                         monthly_donator_role,
                         reason="Reached monthly donation threshold",
                     )
+                    milestone_roles_added_str += f"- {monthly_donator_role.mention}\n"
                     pretty_log(
                         message=f"✅ Added Monthly Donator role to user ID: {member.id} ({member.name})",
                         tag="donation",
@@ -139,8 +140,6 @@ async def check_monthly_and_update_donation_status(
     diamond_milestone = DONATION_MILESTONE_MAP["diamond_donator"]["threshold"]
     legendary_milestone = DONATION_MILESTONE_MAP["legendary_donator"]["threshold"]
     shiny_milestone = DONATION_MILESTONE_MAP["shiny_donator"]["threshold"]
-
-    milestone_roles_added_str = "\n\n**New Milestone Roles Added:**\n"
 
     # Check and assign higher tier roles
     if diamond_role not in member.roles and total_donations >= diamond_milestone:
