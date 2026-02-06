@@ -236,7 +236,6 @@ async def update_donation_func(
                 user_id=member.id,
                 user_name=member.name,
                 total_donations=0,
-                monthly_donations=0,
             )
             # Fetch the newly created record
             donation_record = await fetch_donation_record(bot, member.id)
