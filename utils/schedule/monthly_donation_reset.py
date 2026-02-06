@@ -4,15 +4,13 @@ import discord
 
 from Constants.vn_allstars_constants import (
     DEFAULT_EMBED_COLOR,
+    VN_ALLSTARS_EMOJIS,
     VN_ALLSTARS_TEXT_CHANNELS,
 )
 from utils.db.donations_db import reset_monthly_donations, total_monthly_donations
 from utils.essentials.format import format_comma_pokecoins
 from utils.functions.webhook_func import send_webhook
-from utils.group_command_func.donation.update_leaderboard import (
-
-    get_last_month_year,
-)
+from utils.group_command_func.donation.update_leaderboard import get_last_month_year
 from utils.logs.pretty_log import pretty_log
 
 
@@ -41,3 +39,7 @@ async def reset_monthly_donation_sched(bot):
     log_channel = bot.get_channel(VN_ALLSTARS_TEXT_CHANNELS.server_log)
     if log_channel:
         await send_webhook(bot, log_channel, embed=embed)
+    content = f"Don't forget to give server boosters {VN_ALLSTARS_EMOJIS.vna_pokecoin} 100k as part of their perks!"
+    staff_channel = bot.get_channel(VN_ALLSTARS_TEXT_CHANNELS.moderator_chat)
+    if staff_channel:
+        await staff_channel.send(content)
