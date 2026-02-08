@@ -2,11 +2,12 @@
 #        Market Value DB Functions for Mew (bot.pg_pool)
 # 🟣────────────────────────────────────────────
 
-import discord
 from datetime import datetime
-from utils.logs.pretty_log import pretty_log
+
+import discord
 
 from utils.cache.cache_list import market_value_cache
+from utils.logs.pretty_log import pretty_log
 
 
 # --------------------
@@ -16,7 +17,7 @@ async def set_market_value(
     bot,
     pokemon_name: str,
     dex_number: int,
-    rarity: str | None = None,
+    is_exclusive: bool = False,
     lowest_market: int = 0,
     current_listing: int = 0,
     true_lowest: int = 0,
@@ -30,13 +31,13 @@ async def set_market_value(
             await conn.execute(
                 """
                 INSERT INTO market_value (
-                    pokemon_name, dex_number, rarity, lowest_market,
+                    pokemon_name, dex_number, is_exclusive, lowest_market,
                     current_listing, true_lowest, listing_seen, last_updated
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (pokemon_name) DO UPDATE SET
                     dex_number = $2,
-                    rarity = COALESCE($3, market_value.rarity),
+                    is_exclusive = $3,
                     lowest_market = $4,
                     current_listing = $5,
                     true_lowest = LEAST($6, market_value.true_lowest),
@@ -45,7 +46,7 @@ async def set_market_value(
                 """,
                 pokemon_name.lower(),
                 dex_number,
-                rarity,
+                is_exclusive,
                 lowest_market,
                 current_listing,
                 true_lowest,
@@ -179,13 +180,13 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                 await conn.execute(
                     """
                     INSERT INTO market_value (
-                        pokemon_name, dex_number, rarity, lowest_market,
+                        pokemon_name, dex_number, is_exclusive, lowest_market,
                         current_listing, true_lowest, listing_seen, last_updated
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     ON CONFLICT (pokemon_name) DO UPDATE SET
                         dex_number = $2,
-                        rarity = COALESCE($3, market_value.rarity),
+                        is_exclusive = $3,
                         lowest_market = $4,
                         current_listing = $5,
                         true_lowest = LEAST($6, market_value.true_lowest),
@@ -194,7 +195,7 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     """,
                     pokemon_name.lower(),
                     data.get("dex", 0),
-                    data.get("rarity", "unknown"),
+                    data.get("is_exclusive", False),
                     data.get("lowest_market", 0),
                     data.get("current_listing", 0),
                     data.get("true_lowest", 0),
@@ -235,7 +236,7 @@ async def load_market_cache_from_db(bot) -> dict:
                 cache[row["pokemon_name"]] = {
                     "pokemon": row["pokemon_name"],
                     "dex": row["dex_number"],
-                    "rarity": row["rarity"],
+                    "is_exclusive": row.get("is_exclusive", False),
                     "lowest_market": row["lowest_market"],
                     "current_listing": row["current_listing"],
                     "true_lowest": row["true_lowest"],

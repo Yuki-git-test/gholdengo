@@ -330,6 +330,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
 
             original_id = fields.get("ID", "0")
             embed_color = embed.color.value
+            is_exclusive = True if embed_color == 0xEA260B else False
             display_pokemon_name = poke_name.title()
 
             if original_id in processed_market_feed_ids:
@@ -472,10 +473,10 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             cache_update = {
                 "pokemon": poke_name,
                 "dex": poke_dex,
-                "rarity": "unknown",  # Could extract from footer if available
-                "lowest_market": lowest_market,  # Original "Lowest Market" from embed
+                "is_exclusive": is_exclusive,
+                "lowest_market": lowest_market,
                 "current_listing": listed_price,
-                "true_lowest": true_lowest,  # Our calculated true lowest
+                "true_lowest": true_lowest,
                 "listing_seen": listing_seen,
             }
             prev = market_value_cache.get(cache_key, {})
@@ -485,7 +486,6 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 or prev.get("true_lowest") != true_lowest
                 or prev.get("listing_seen") != listing_seen
                 or prev.get("dex") != poke_dex
-                or prev.get("rarity") != "unknown"
             )
             market_value_cache[cache_key] = cache_update
             if needs_update:
@@ -493,7 +493,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     bot,
                     pokemon_name=poke_name,
                     dex_number=poke_dex,
-                    rarity="unknown",
+                    is_exclusive=is_exclusive,
                     lowest_market=lowest_market,
                     current_listing=listed_price,
                     true_lowest=true_lowest,
