@@ -60,5 +60,5 @@ vna_members_cache: dict[int, dict] = {}
 # "faction": str,
 # }
 
-
+market_value_cache: dict[str, dict] = {}
 snipe_ga_active = False

@@ -11,20 +11,22 @@ from Constants.paldea_galar_dict import (
     paldean_mons,
     rarity_meta,
 )
-from utils.cache.cache_list import (
-    _market_alert_index,
-    market_alert_cache,
-    processed_market_feed_ids,
-    processed_market_feed_message_ids,
-)
-from utils.functions.webhook_func import send_webhook
-from utils.logs.debug_log import debug_log, enable_debug
-from utils.logs.pretty_log import pretty_log
 from Constants.vn_allstars_constants import (
     VN_ALLSTARS_EMOJIS,
     VN_ALLSTARS_ROLES,
     VN_ALLSTARS_TEXT_CHANNELS,
 )
+from utils.cache.cache_list import (
+    _market_alert_index,
+    market_alert_cache,
+    market_value_cache,
+    processed_market_feed_ids,
+    processed_market_feed_message_ids,
+)
+from utils.db.market_value_db import set_market_value
+from utils.functions.webhook_func import send_webhook
+from utils.logs.debug_log import debug_log, enable_debug
+from utils.logs.pretty_log import pretty_log
 
 # enable_debug(f"{__name__}.market_snipe_handler")
 # enable_debug(f"{__name__}.handle_market_alert")
@@ -133,7 +135,9 @@ async def market_snipe_handler(
         debug_log(
             f"Set author: {embed.author.name if embed.author else ''}, icon: {embed.author.icon_url if embed.author else None}"
         )
-        new_embed.add_field(name="Buy Command (Android)", value=f";m b {id}", inline=False)
+        new_embed.add_field(
+            name="Buy Command (Android)", value=f";m b {id}", inline=False
+        )
         new_embed.add_field(
             name="Buy Command (Iphone)", value=f"`;m b {id}`", inline=False
         )
@@ -426,5 +430,79 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                         listing_seen=listing_seen,
                         embed=embed,
                     )
+            # 💎────────────────────────────────────────────
+            #           🏪 Update Market Value Cache & DB
+            # 💎────────────────────────────────────────────
+            # Update market value cache with new listing data
+            # Extract additional market data
+            lowest_market_str = re.sub(
+                r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
+            )
+            lowest_market_match = re.search(r"(\d[\d,]*)", lowest_market_str)
+            lowest_market = (
+                int(lowest_market_match.group(1).replace(",", ""))
+                if lowest_market_match
+                else 0
+            )
+
+            listing_seen = fields.get("Listing Seen", "Unknown")
+
+            # Upsert into market value cache
+            cache_key = poke_name.lower()
+
+            # Get existing data to preserve true lowest price
+            existing_data = market_value_cache.get(cache_key, {})
+            existing_lowest = existing_data.get("true_lowest", float("inf"))
+
+            # Calculate the true lowest price among:
+            # 1. Current listing price
+            # 2. "Lowest Market" from embed
+            # 3. Previously tracked lowest
+            true_lowest = min(listed_price, lowest_market, existing_lowest)
+
+            # Only update if we have a valid price (not 0)
+            if true_lowest == float("inf") or true_lowest == 0:
+                true_lowest = (
+                    max(listed_price, lowest_market)
+                    if max(listed_price, lowest_market) > 0
+                    else 0
+                )
+
+            # Only update DB if any value has changed
+            cache_update = {
+                "pokemon": poke_name,
+                "dex": poke_dex,
+                "rarity": "unknown",  # Could extract from footer if available
+                "lowest_market": lowest_market,  # Original "Lowest Market" from embed
+                "current_listing": listed_price,
+                "true_lowest": true_lowest,  # Our calculated true lowest
+                "listing_seen": listing_seen,
+            }
+            prev = market_value_cache.get(cache_key, {})
+            needs_update = (
+                prev.get("lowest_market") != lowest_market
+                or prev.get("current_listing") != listed_price
+                or prev.get("true_lowest") != true_lowest
+                or prev.get("listing_seen") != listing_seen
+                or prev.get("dex") != poke_dex
+                or prev.get("rarity") != "unknown"
+            )
+            market_value_cache[cache_key] = cache_update
+            if needs_update:
+                await set_market_value(
+                    bot,
+                    pokemon_name=poke_name,
+                    dex_number=poke_dex,
+                    rarity="unknown",
+                    lowest_market=lowest_market,
+                    current_listing=listed_price,
+                    true_lowest=true_lowest,
+                    listing_seen=listing_seen,
+                )
+                pretty_log(
+                    "debug",
+                    f"Updated market cache & DB for {poke_name}: embed_lowest={lowest_market:,}, current={listed_price:,}, true_lowest={true_lowest:,}, seen={listing_seen}",
+                )
+
         except Exception as e:
             debug_log(f"Exception in embed processing: {e}", highlight=True, force=True)
