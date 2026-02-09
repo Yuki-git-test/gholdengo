@@ -22,9 +22,10 @@ async def set_market_value(
     current_listing: int = 0,
     true_lowest: int = 0,
     listing_seen: str | None = None,
+    image_link: str | None = None,
 ):
     """
-    Insert or update market value data for a Pokémon.
+    Insert or update market value data for a specific Pokémon.
     """
     try:
         async with bot.pg_pool.acquire() as conn:
@@ -32,9 +33,9 @@ async def set_market_value(
                 """
                 INSERT INTO market_value (
                     pokemon_name, dex_number, is_exclusive, lowest_market,
-                    current_listing, true_lowest, listing_seen, last_updated
+                    current_listing, true_lowest, listing_seen, image_link, last_updated
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 ON CONFLICT (pokemon_name) DO UPDATE SET
                     dex_number = $2,
                     is_exclusive = $3,
@@ -42,7 +43,8 @@ async def set_market_value(
                     current_listing = $5,
                     true_lowest = LEAST($6, market_value.true_lowest),
                     listing_seen = COALESCE($7, market_value.listing_seen),
-                    last_updated = $8
+                    image_link = COALESCE($8, market_value.image_link),
+                    last_updated = $9
                 """,
                 pokemon_name.lower(),
                 dex_number,
@@ -51,14 +53,15 @@ async def set_market_value(
                 current_listing,
                 true_lowest,
                 listing_seen,
+                image_link,
                 datetime.utcnow(),
             )
-
         pretty_log(
             tag="db",
-            message=f"Updated market value for {pokemon_name}: true_lowest={true_lowest:,}",
+            message=f"Set market value for {pokemon_name} (Dex {dex_number})",
             bot=bot,
         )
+        return True
 
     except Exception as e:
         pretty_log(
@@ -66,6 +69,7 @@ async def set_market_value(
             message=f"Failed to set market value for {pokemon_name}: {e}",
             bot=bot,
         )
+        return False
 
 
 # --------------------
@@ -181,9 +185,9 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     """
                     INSERT INTO market_value (
                         pokemon_name, dex_number, is_exclusive, lowest_market,
-                        current_listing, true_lowest, listing_seen, last_updated
+                        current_listing, true_lowest, listing_seen, image_link, last_updated
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     ON CONFLICT (pokemon_name) DO UPDATE SET
                         dex_number = $2,
                         is_exclusive = $3,
@@ -191,7 +195,8 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                         current_listing = $5,
                         true_lowest = LEAST($6, market_value.true_lowest),
                         listing_seen = COALESCE($7, market_value.listing_seen),
-                        last_updated = $8
+                        image_link = COALESCE($8, market_value.image_link),
+                        last_updated = $9
                     """,
                     pokemon_name.lower(),
                     data.get("dex", 0),
@@ -200,6 +205,7 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     data.get("current_listing", 0),
                     data.get("true_lowest", 0),
                     data.get("listing_seen", "Unknown"),
+                    data.get("image_link", None),
                     datetime.utcnow(),
                 )
                 update_count += 1
@@ -241,6 +247,7 @@ async def load_market_cache_from_db(bot) -> dict:
                     "current_listing": row["current_listing"],
                     "true_lowest": row["true_lowest"],
                     "listing_seen": row["listing_seen"],
+                    "image_link": row.get("image_link", None),
                 }
 
         pretty_log(

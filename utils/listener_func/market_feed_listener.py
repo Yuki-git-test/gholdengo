@@ -332,6 +332,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             embed_color = embed.color.value
             is_exclusive = True if embed_color == 0xEA260B else False
             display_pokemon_name = poke_name.title()
+            thumbnail_url = embed.thumbnail.url if embed.thumbnail else None
 
             if original_id in processed_market_feed_ids:
                 debug_log(f"Market Feed ID {original_id} already processed")
@@ -478,6 +479,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 "current_listing": listed_price,
                 "true_lowest": true_lowest,
                 "listing_seen": listing_seen,
+                "image_link": thumbnail_url,
             }
             prev = market_value_cache.get(cache_key, {})
             needs_update = (
@@ -486,6 +488,8 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 or prev.get("true_lowest") != true_lowest
                 or prev.get("listing_seen") != listing_seen
                 or prev.get("dex") != poke_dex
+                or prev.get("is_exclusive") != is_exclusive
+                or prev.get("image_link") != thumbnail_url
             )
             market_value_cache[cache_key] = cache_update
             if needs_update:
@@ -498,6 +502,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     current_listing=listed_price,
                     true_lowest=true_lowest,
                     listing_seen=listing_seen,
+                    image_link=thumbnail_url,
                 )
                 pretty_log(
                     "debug",
