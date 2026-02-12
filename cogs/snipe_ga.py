@@ -7,16 +7,11 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import utils.cache.global_variables as globals
+from Constants.giveaway import REQUIRED_ROLES
 from Constants.vn_allstars_constants import DEFAULT_EMBED_COLOR, VN_ALLSTARS_ROLES
 from utils.functions.snipe_ga_func import SnipeGAView, build_snipe_ga_embed
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.pretty_defer import pretty_defer
-
-REQUIRED_ROLES = [
-    VN_ALLSTARS_ROLES.staff,
-    VN_ALLSTARS_ROLES.giveaway_host,
-    VN_ALLSTARS_ROLES.seafoam,
-]
 
 SNIPE_COOLDOWNS = {}
 COOLDOWN_SECONDS = 30
@@ -53,9 +48,10 @@ class SnipeGA(commands.Cog):
     @app_commands.describe(
         prize="Prize for the giveaway",
         duration="Duration of the giveaway in seconds",
+        winners="Number of winners (default is 1)",
     )
     async def snipe_ga(
-        self, interaction: discord.Interaction, prize: str, duration: int
+        self, interaction: discord.Interaction, prize: str, duration: int, winners: int = 1
     ):
         """Starts a quick snipe giveaway."""
 
@@ -109,6 +105,7 @@ class SnipeGA(commands.Cog):
             author=interaction.user,
             embed_color=DEFAULT_EMBED_COLOR,
             timeout=duration,
+            winners_count=winners,
         )
         await loader.success(content="Snipe giveaway started!", delete=True)
         try:

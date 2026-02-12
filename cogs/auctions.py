@@ -271,6 +271,11 @@ class AuctionSystem(commands.Cog):
         self.bid_locks: Dict[int, asyncio.Lock] = {}  # per-auction locks
         self.recover_tasks()
 
+    ghouldengo_group = app_commands.Group(
+        name="ghouldengo",
+        description="Commands related to ghouldengo.",
+        guild_ids=[DEFAULT_GUILD_ID],
+    )
     # ----- Balances / Inventory -----
 
     def get_balance(self, user_id: int) -> int:
@@ -484,10 +489,11 @@ class AuctionSystem(commands.Cog):
 
     # ---------------- User Commands ---------------- #
 
-    @app_commands.command(
-        name="auction_list", description="List active auctions (PokéMeow-style pages)"
+    # ghouldengo list
+    @ghouldengo_group.command(
+        name="list", description="List active ghouldengo auctions (PokéMeow-style pages)"
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_list(self, interaction: discord.Interaction):
         auctions = sorted(self.active_auctions(), key=lambda a: float(a["end_ts"]))
         if not auctions:
@@ -499,10 +505,10 @@ class AuctionSystem(commands.Cog):
         emb = view.build_embed(interaction.user.id)
         await interaction.response.send_message(embed=emb, view=view)
 
-    @app_commands.command(
-        name="auction_info", description="Show details about one auction"
+    @ghouldengo_group.command(
+        name="info", description="Show details about one ghouldengo auction"
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_info(self, interaction: discord.Interaction, id: int):
         auc = self.get_auction(id)
         if not auc or auc.get("is_closed"):
@@ -514,10 +520,10 @@ class AuctionSystem(commands.Cog):
             embed=self.auction_embed(auc, viewer_balance=bal)
         )
 
-    @app_commands.command(
-        name="auction_lookup", description="Look up active auctions for a Pokémon"
+    @ghouldengo_group.command(
+        name="lookup", description="Look up active ghouldengo auctions for a Pokémon"
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_lookup(self, interaction: discord.Interaction, pokemon: str):
         c = canon(pokemon)
         if not c:
@@ -545,8 +551,8 @@ class AuctionSystem(commands.Cog):
             )
         await interaction.response.send_message(embed=emb)
 
-    @app_commands.command(name="auction_bid", description="Bid on an auction by ID")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="bid", description="Bid on an ghouldengo auction by ID")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_bid(self, interaction: discord.Interaction, id: int, amount: int):
         if amount <= 0:
             return await interaction.response.send_message(
@@ -636,16 +642,16 @@ class AuctionSystem(commands.Cog):
                 except Exception as e:
                     pretty_log("warn", f"Failed to notify previous bidder: {e}")
 
-    @app_commands.command(name="coins", description="Check your balance")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="coins", description="Check your balance")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def coins(self, interaction: discord.Interaction):
         balance = self.get_balance(interaction.user.id)
         await interaction.response.send_message(
             f"💰 You have {balance} {COIN}.", ephemeral=True
         )
 
-    @app_commands.command(name="inventory", description="Show inventory")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="inventory", description="Show inventory")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def inventory_cmd(
         self, interaction: discord.Interaction, member: Optional[discord.Member] = None
     ):
@@ -663,11 +669,11 @@ class AuctionSystem(commands.Cog):
             emb.add_field(name="📦 Pokémon", value="None", inline=False)
         await interaction.response.send_message(embed=emb, ephemeral=True)
 
-    @app_commands.command(
+    @ghouldengo_group.command(
         name="legal_pokemon_list",
         description="Show which Pokémon are legal in a generation or a named list",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def legal_pokemon_list(self, interaction: discord.Interaction, gen: str):
         """
         gen: can be a generation number (e.g. '1') or a named list (e.g. 'meta').
@@ -721,11 +727,11 @@ class AuctionSystem(commands.Cog):
     # ---------------- Admin / Whitelisted Commands ---------------- #
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auc_register",
+    @ghouldengo_group.command(
+        name="register",
         description="Register a member with starting coins & empty inventory",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auc_register(
         self, interaction: discord.Interaction, member: discord.Member
     ):
@@ -738,8 +744,10 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(name="auction_start", description="Start a single auction")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(
+        name="start", description="Start a single ghouldengo auction"
+    )
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_start(
         self,
         interaction: discord.Interaction,
@@ -796,11 +804,11 @@ class AuctionSystem(commands.Cog):
             )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_start_gen",
-        description="Start auctions for ALL Pokémon in a generation or a named list",
+    @ghouldengo_group.command(
+        name="start_gen",
+        description="Start ghouldengo auctions for ALL Pokémon in a generation or a named list",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_start_gen(
         self,
         interaction: discord.Interaction,
@@ -854,11 +862,11 @@ class AuctionSystem(commands.Cog):
         await interaction.response.send_message("Done.", ephemeral=True)
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_start_multi",
-        description="Start auctions for ALL Pokémon across multiple gens",
+    @ghouldengo_group.command(
+        name="start_multi",
+        description="Start ghouldengo auctions for ALL Pokémon across multiple gens",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_start_multi(
         self,
         interaction: discord.Interaction,
@@ -898,11 +906,11 @@ class AuctionSystem(commands.Cog):
         await interaction.response.send_message("Done.", ephemeral=True)
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_start_copies",
+    @ghouldengo_group.command(
+        name="start_copies",
         description="Start many copies of a specific Pokémon",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_start_copies(
         self,
         interaction: discord.Interaction,
@@ -937,10 +945,10 @@ class AuctionSystem(commands.Cog):
         await interaction.response.send_message("Done.", ephemeral=True)
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_close", description="Manually close & settle an auction by ID"
+    @ghouldengo_group.command(
+        name="close", description="Manually close & settle a ghouldengo auction by ID"
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+   # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_close(self, interaction: discord.Interaction, id: int):
         auc = self.get_auction(id)
         if not auc:
@@ -964,11 +972,11 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_cancel",
-        description="Cancel an auction (refund current top bidder)",
+    @ghouldengo_group.command(
+        name="cancel",
+        description="Cancel a ghouldengo auction (refund current top bidder)",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_cancel(self, interaction: discord.Interaction, id: int):
         auc = self.get_auction(id)
         if not auc:
@@ -996,8 +1004,8 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(name="add_coins", description="Add coins to a user")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="add_coins", description="Add coins to a user")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def add_coins(
         self, interaction: discord.Interaction, member: discord.Member, amount: int
     ):
@@ -1011,8 +1019,8 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(name="set_coins", description="Set coins for a user")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="set_coins", description="Set coins for a user")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def set_coins(
         self, interaction: discord.Interaction, member: discord.Member, amount: int
     ):
@@ -1023,8 +1031,8 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(name="ban", description="Ban a user from bidding")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="ban", description="Ban a user from bidding")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def ban(self, interaction: discord.Interaction, member: discord.Member):
         if member.id not in self.data["banned"]:
             self.data["banned"].append(member.id)
@@ -1034,8 +1042,8 @@ class AuctionSystem(commands.Cog):
         )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(name="unban", description="Unban a user")
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    @ghouldengo_group.command(name="unban", description="Unban a user")
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def unban(self, interaction: discord.Interaction, member: discord.Member):
         if member.id in self.data["banned"]:
             self.data["banned"].remove(member.id)
@@ -1049,11 +1057,11 @@ class AuctionSystem(commands.Cog):
             )
 
     @app_commands.check(check_admin_whitelist)
-    @app_commands.command(
-        name="auction_reset_all",
+    @ghouldengo_group.command(
+        name="reset_all",
         description="DANGER: Reset ALL auction data, coins, inventories, auctions, and bans",
     )
-    @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+   # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_reset_all(self, interaction: discord.Interaction, confirm: str):
         if confirm != "CONFIRM":
             return await interaction.response.send_message(

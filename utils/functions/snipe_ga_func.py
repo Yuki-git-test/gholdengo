@@ -29,20 +29,34 @@ def build_snipe_ga_embed(
     prize: str,
     entries: int = 0,
     ends_at: datetime = None,
-    winner: discord.Member = None,
+    winner=None,
+    winner_count: int = None,
 ):
     """Builds the embed for the snipe giveaway."""
     ends_text = f"<t:{int(ends_at.timestamp())}:R>" if ends_at else "Unknown"
     color = DEFAULT_EMBED_COLOR
+    # Support winner as None, a single Member, a list of Members, or a string of mentions
+    winner_mentions = ""
+    if winner:
+        if isinstance(winner, list):
+            winner_mentions = ", ".join(
+                [w.mention if hasattr(w, "mention") else str(w) for w in winner]
+            )
+        elif hasattr(winner, "mention"):
+            winner_mentions = winner.mention
+        else:
+            winner_mentions = str(winner)
     desc = f"""## SNIPE GIVEAWAY
-- Hosted By: {host.mention}
-- Prize: {prize}
-- Allowed roles: {allowed_roles_display}
-- Blacklisted roles: {blaclisted_roles_display}
+- **Hosted By:** {host.mention}
+{f'- **Number of Winners:** {winner_count}' if winner_count is not None else ''}
+- **Prize:** {prize}
+- **Allowed roles:** {allowed_roles_display}
+- **Blacklisted roles:** {blaclisted_roles_display}
 
 - **Entries:** {entries}
 - **Ends:** {ends_text}
-{f"- **Winner:** {winner.mention}" if winner else ""}
+{f'- **Winner(s):** {winner_mentions}' if winner_mentions else ''}
+
 """
     guild = host.guild
     embed = discord.Embed(description=desc, color=color)
@@ -51,12 +65,22 @@ def build_snipe_ga_embed(
 
 
 class SnipeGAView(discord.ui.View):
-    def __init__(self, bot, prize: str, author=None, embed_color=None, timeout=None):
+
+    def __init__(
+        self,
+        bot,
+        prize: str,
+        winners_count: int = 1,
+        author=None,
+        embed_color=None,
+        timeout=None,
+    ):
         super().__init__(timeout=timeout)
         self.bot = bot
         self.prize = prize
         self.author = author
         self.host = author
+        self.winners_count = winners_count
         self.timeout = timeout  # Explicitly store timeout
         self.ends_at = (
             datetime.now() + timedelta(seconds=timeout or 0) if timeout else None
@@ -140,6 +164,7 @@ class SnipeGAView(discord.ui.View):
                 prize=self.prize,
                 entries=len(self.joined_users),
                 ends_at=self.ends_at,
+                winner_count=self.winners_count,
             )
             await self.message.edit(embed=new_embed)
 
@@ -176,40 +201,41 @@ class SnipeGAView(discord.ui.View):
 
         guild = self.message.guild
 
-        # Random fair selection
-        winner_id = random.choice(list(self.joined_users))
-        winner = guild.get_member(winner_id)
+        # Random fair selection for multiple winners
+        winners_count = getattr(self, "winners_count", 1)
+        winner_ids = random.sample(
+            list(self.joined_users), min(winners_count, len(self.joined_users))
+        )
+        winners = [guild.get_member(wid) for wid in winner_ids if guild.get_member(wid)]
 
-        if winner is None:
+        if not winners:
             pretty_log("warn", "No valid winner could be selected in snipe giveaway.")
             await self.message.channel.send("⚠️ No valid winner could be selected.")
             self.stop()
             return
 
-        # Don't remove winner from joined_users, keep for entry count
-        self.winner = winner
+        # Store winners for later use
+        self.winner = winners
 
         updated_embed = build_snipe_ga_embed(
             host=self.host,
             prize=self.prize,
-            entries=len(self.joined_users),  # includes winner
+            entries=len(self.joined_users),
             ends_at=self.ends_at,
-            winner=self.winner,
+            winner=", ".join([winner.mention for winner in winners]),
         )
         await self.message.edit(embed=updated_embed)
 
-        # Exclude winner from participant list
+        # Exclude winners from participant list
         joiners_mentions = [
             guild.get_member(uid).mention
             for uid in self.joined_users
-            if guild.get_member(uid) and uid != winner_id
+            if guild.get_member(uid) and uid not in winner_ids
         ]
 
-        content = (
-            f"🎊 Congrats {winner.mention} 🎊 for winning the **Snipe Giveaway**! 🏆✨"
-        )
+        content = f"🎊 Congrats {', '.join([winner.mention for winner in winners])} 🎊 for winning the **Snipe Giveaway**! 🏆✨"
 
-        desc = f"""### 🏅 Snipe Giveaway Winner:\n🎉 {winner.mention} 🎉\n"""
+        desc = f"""### 🏅 Snipe Giveaway Winner(s):\n🎉 {', '.join([winner.mention for winner in winners])} 🎉\n"""
 
         participants_desc = "👥 **Participants:**\n" + "\n".join(joiners_mentions)
         full_description = desc + participants_desc
