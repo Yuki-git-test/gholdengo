@@ -25,8 +25,8 @@ def format_next_run_manila(next_run_time):
     # Convert to Manila timezone
     manila_tz = ZoneInfo("Asia/Manila")
     manila_time = next_run_time.astimezone(manila_tz)
-    # Format as: Sunday, Nov 3, 2025 at 12:00 PM (Asia/Manila)
-    return manila_time.strftime("%A, %b %d, %Y at %I:%M %p (Asia/Manila)")
+    # Format as: 03/01/26 - 01:00 PM (Asia/Manila)
+    return manila_time.strftime("%m/%d/%y - %I:%M %p (Asia/Manila)")
 
 
 # 🌈─────────────────────────────────────────────────────────────
@@ -36,6 +36,7 @@ async def setup_scheduler(bot):
 
     # Start the scheduler
     scheduler_manager.start()
+    schedules = []
     # ✨─────────────────────────────────────────────────────────
     # 🤍 Monthly Donation Reset Every 1st at 12:00 AM EST
     # ✨─────────────────────────────────────────────────────────
@@ -52,14 +53,22 @@ async def setup_scheduler(bot):
         readable_next_run = format_next_run_manila(
             monthly_donation_reset_job.next_run_time
         )
-        pretty_log(
-            tag="schedule",
-            message=f"Monthly donation reset job scheduled at {readable_next_run}",
-            bot=bot,
-        )
+        # Format: checkemoji  Monthly donation reset 03/01/26 - 13:00 PM (Asia/Manila)
+        schedules.append(f"Monthly donation reset {readable_next_run}")
     except Exception as e:
         pretty_log(
             tag="error",
             message=f"Failed to schedule monthly donation reset job: {e}",
             bot=bot,
         )
+    schedule_checklist(schedules)
+
+
+# 🟣────────────────────────────────────────────
+#         ⚡ Startup Checklist ⚡
+# 🟣────────────────────────────────────────────
+def schedule_checklist(schedules):
+    print("\n────────────────────────⋆⋅☆⋅⋆ ────────────────────────")
+    for schedule in schedules:
+        print(f"✅ {schedule}")
+    print("────────────────────────⋆⋅☆⋅⋆ ────────────────────────\n")

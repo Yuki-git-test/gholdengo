@@ -16,7 +16,7 @@ from utils.parsers.duration import parse_total_seconds
 from utils.visuals.pretty_defer import pretty_defer
 
 
-async def create_snipe_ga_prefix(bot, message: discord.Message):
+async def create_snipe_ga_prefix(bot: discord.Client, message: discord.Message):
 
     user = message.author
     # Check if user has required roles to use the command
@@ -33,11 +33,11 @@ async def create_snipe_ga_prefix(bot, message: discord.Message):
     cancel_str = "To cancel the giveaway creation process, type 'cancel' at any time."
     description = f"{question_one}\n\n{cancel_str}"
     embed = discord.Embed(
-        title="Snipe Giveaway",
+        title="Enter Snipe Giveaway Channel",
         description=description,
         color=DEFAULT_EMBED_COLOR,
     )
-    embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
+    embed.set_author(name="Snipe Giveaway", icon_url=bot.user.display_avatar.url)
 
     def check(m):
         return m.author == user and m.channel == message.channel
@@ -62,10 +62,13 @@ async def create_snipe_ga_prefix(bot, message: discord.Message):
             return
 
         # Ask for duration
-        duration_question = "How long should the giveaway last? Please provide the duration (e.g. 1d, 2h, 30m)."
-        description = f"{duration_question}\n\nType `cancel` to stop this process."
+        duration_question = "How long should the giveaway last? Please provide the duration (e.g. `30s`).\n\n**Note:** For Snipe Giveaways, the duration must be between 15 and 60 seconds."
+        description = f"{duration_question}\n\n{cancel_str}"
         duration_question_embed = embed.copy()
+
         duration_question_embed.description = description
+        duration_title = "Enter Snipe Giveaway Duration"
+        duration_question_embed.title = duration_title
         await message.reply(embed=duration_question_embed)
         duration_response = await bot.wait_for("message", check=check, timeout=120)
         if duration_response.content.lower() == "cancel":
@@ -75,17 +78,24 @@ async def create_snipe_ga_prefix(bot, message: discord.Message):
             duration_seconds = parse_total_seconds(duration_response.content)
             if duration_seconds <= 0:
                 raise ValueError
+            # Duration must be 60 seconds or less for snipe giveaways but at least 15 seconds
+            if duration_seconds < 15 or duration_seconds > 60:
+                await message.channel.send(
+                    "Please specify a duration between 15 and 60 seconds for Snipe GA. Giveaway creation cancelled."
+                )
+                return
         except ValueError:
             await message.channel.send(
-                "Invalid duration format. Please enter a valid duration (e.g. '5m', '2h'). Giveaway creation cancelled."
+                "Invalid duration format. Please enter a valid duration (e.g. `15s`, '5m'). Giveaway creation cancelled."
             )
             return
 
         # Ask for number of winners
         winners_question = "How many winners should there be for this giveaway? (Type a number, e.g. 1)"
-        description = f"{winners_question}\n\nType `cancel` to stop this process."
+        description = f"{winners_question}\n\n{cancel_str}"
         winners_question_embed = embed.copy()
         winners_question_embed.description = description
+        winners_question_embed.title = "Enter Number of Winners"
         await message.reply(embed=winners_question_embed)
         winners_response = await bot.wait_for("message", check=check, timeout=120)
         if winners_response.content.lower() == "cancel":
@@ -105,9 +115,10 @@ async def create_snipe_ga_prefix(bot, message: discord.Message):
         prize_question = (
             f"There will be {winners} winner(s). What do you want to giveaway?"
         )
-        description = f"{prize_question}\n\nType `cancel` to stop this process."
+        description = f"{prize_question}\n\n{cancel_str}"
         prize_question_embed = embed.copy()
         prize_question_embed.description = description
+        prize_question_embed.title = "Enter Snipe Giveaway Prize"
         await message.reply(embed=prize_question_embed)
         prize_response = await bot.wait_for("message", check=check, timeout=120)
         if prize_response.content.lower() == "cancel":
@@ -132,12 +143,25 @@ async def create_snipe_ga_prefix(bot, message: discord.Message):
         await message.reply(embed=confirm_embed)
 
         ends_at = datetime.now() + timedelta(seconds=duration_seconds)
-        content = f"SNIPE <@& {VN_ALLSTARS_ROLES.giveaways}>!"
+        content = f"SNIPE <@&{VN_ALLSTARS_ROLES.giveaways}>!"
         snipe_ga_embed = build_snipe_ga_embed(
             host=message.author,
             prize=prize,
             ends_at=ends_at,
         )
-
+        view = SnipeGAView(
+            bot=bot,
+            prize=prize,
+            author=message.author,
+            embed_color=DEFAULT_EMBED_COLOR,
+            timeout=duration_seconds,
+            winners_count=winners,
+        )
+        ga_msg = await giveaway_channel.send(
+            content=content,
+            embed=snipe_ga_embed,
+            view=view,
+        )
+        view.message = ga_msg
     except asyncio.TimeoutError:
         await message.channel.send("You took too long to reply. Giveaway cancelled.")

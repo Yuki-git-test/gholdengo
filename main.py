@@ -13,6 +13,7 @@ from utils.cache.central_cache_loader import load_all_cache
 from utils.db.get_pg_pool import get_pg_pool
 from utils.logs.pretty_log import pretty_log, set_ghouldengo_bot
 from utils.schedule.scheduler import setup_scheduler
+
 # ---- Intents / Bot ----
 intents = discord.Intents.default()
 intents.members = True
@@ -33,6 +34,32 @@ async def refresh_all_caches():
 
     # Clear processed message ID sets to prevent memory bloat
     clear_processed_messages_cache()
+
+
+# 🟣────────────────────────────────────────────
+#         ⚡ Startup Checklist ⚡
+# 🟣────────────────────────────────────────────
+async def startup_checklist(bot: commands.Bot):
+    from utils.cache.cache_list import (
+        market_alert_cache,
+        market_value_cache,
+        vna_members_cache,
+        webhook_url_cache,
+    )
+
+    total_market_values = len(market_value_cache)
+    # ❀ This divider stays untouched ❀
+    print("\n────────────────────────⋆⋅☆⋅⋆ ────────────────────────")
+    print(f"✅ {len(bot.cogs)} 💲 Cogs Loaded")
+    print(f"✅ {len(vna_members_cache)} 🪙  VNA Members")
+    print(f"✅ {len(market_alert_cache)} 🛍️  Market Alerts")
+    print(f"✅ {total_market_values:,} 💵  Market Values")
+    print(f"✅ {len(webhook_url_cache)} 🏷️  Webhook Urls")
+    pg_status = "Ready" if hasattr(bot, "pg_pool") else "Not Ready"
+    print(f"✅ {pg_status} 🛒  PostgreSQL Pool")
+    total_slash_commands = sum(1 for _ in bot.tree.walk_commands())
+    print(f"✅ {total_slash_commands} 💰 Slash Commands Synced")
+    print("────────────────────────⋆⋅☆⋅⋆ ────────────────────────\n")
 
 
 # ---- Simple health check command ----
@@ -70,7 +97,7 @@ async def load_extensions():
                         tag="error",
                     )
     _loaded_count = len(loaded_cogs)
-    pretty_log("ready", f"✅ Loaded { _loaded_count} cogs")#
+    pretty_log("ready", f"✅ Loaded { _loaded_count} cogs")  #
 
 
 # ---- Lifecycle ----#
@@ -101,6 +128,14 @@ async def on_ready():
     if not refresh_all_caches.is_running():
         refresh_all_caches.start()
         pretty_log(message="✅ Started hourly cache refresh task", tag="ready")
+
+    # Load caches immediately before checklist
+    from utils.cache.central_cache_loader import load_all_cache
+
+    await load_all_cache(bot)
+
+    # ❀ Run startup checklist ❀
+    await startup_checklist(bot)
 
     try:
         await bot.change_presence(

@@ -15,8 +15,8 @@ from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_total_seconds
 from utils.visuals.pretty_defer import pretty_defer
 
-
-async def create_snipe_ga_prefix(bot, message: discord.Message):
+# For regular ga
+async def create_ga_prefix(bot, message: discord.Message):
 
     user = message.author
     # Check if user has required roles to use the command
