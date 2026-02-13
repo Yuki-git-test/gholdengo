@@ -490,7 +490,8 @@ class VN_ALLSTARS_CATEGORIES:
 #       VN_ALLSTARS_ROLES
 # 💦☁────────────────────────────────────────────💦☁
 class VN_ALLSTARS_ROLES:
-    
+    amethyst_perks = 1459195654688735253
+    double_probation = 1445374287098937418
     monthly_donator = 1459194610889789592
     clan_break = 1445374171763965952
     probation = 1426299800386539521

@@ -150,7 +150,7 @@ async def market_snipe_handler(
         new_embed.add_field(name="Amount", value=str(amount), inline=True)
         new_embed.add_field(
             name="Lowest Market",
-            value=f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {lowest_market:,}",
+            value=f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {int(lowest_market):,}",
             inline=True,
         )
 

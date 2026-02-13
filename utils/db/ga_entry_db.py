@@ -49,7 +49,42 @@ async def upsert_ga_entry(
             include_trace=True,
         )
 
-async def fetch_all_user_ga_entries(bot: discord.Client,user_id: int):
+
+async def fetch_entries_by_giveaway(bot: discord.Client, giveaway_id: int):
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT user_id, user_name, entry_count FROM giveaway_entries
+                WHERE giveaway_id = $1
+                """,
+                giveaway_id,
+            )
+            entries = [
+                {
+                    "user_id": record["user_id"],
+                    "user_name": record["user_name"],
+                    "entry_count": record["entry_count"],
+                }
+                for record in records
+            ]
+            pretty_log(
+                "info",
+                f"Fetched {len(entries)} entries for giveaway {giveaway_id}",
+                label="Giveaway Entry DB",
+            )
+            return entries
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching entries for giveaway {giveaway_id}: {e}",
+            label="Giveaway Entry DB",
+            include_trace=True,
+        )
+        return []
+
+
+async def fetch_all_user_ga_entries(bot: discord.Client, user_id: int):
     try:
         async with bot.pg_pool.acquire() as conn:
             records = await conn.fetch(
@@ -179,7 +214,10 @@ async def update_ga_entry(
             include_trace=True,
         )
 
-async def update_all_ga_entries_for_a_user(bot: discord.Client, user_id: int, new_entry_count: int):
+
+async def update_all_ga_entries_for_a_user(
+    bot: discord.Client, user_id: int, new_entry_count: int
+):
     try:
         async with bot.pg_pool.acquire() as conn:
             await conn.execute(
@@ -204,6 +242,7 @@ async def update_all_ga_entries_for_a_user(bot: discord.Client, user_id: int, ne
             include_trace=True,
         )
 
+
 async def delete_all_user_ga_entries(bot: discord.Client, user_id: int):
     """Removes all giveaway entries for a user."""
     try:
@@ -227,7 +266,7 @@ async def delete_all_user_ga_entries(bot: discord.Client, user_id: int):
             label="Giveaway Entry DB",
             include_trace=True,
         )
-        
+
 
 async def delete_ga_entry(bot: discord.Client, giveaway_id: int, user_id: int):
     """Removes a user's giveaway row."""
