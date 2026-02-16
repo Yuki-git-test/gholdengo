@@ -1,3 +1,5 @@
+import discord
+
 from Constants.vn_allstars_constants import DEFAULT_EMBED_COLOR, VN_ALLSTARS_ROLES
 
 REQUIRED_ROLES = [
@@ -6,7 +8,7 @@ REQUIRED_ROLES = [
     VN_ALLSTARS_ROLES.seafoam,
 ]
 ALLOWED_JOIN_ROLES = [VN_ALLSTARS_ROLES.vna_member]
-BLACKLISTED_ROLES = [VN_ALLSTARS_ROLES.probation, VN_ALLSTARS_ROLES.double_probation]
+BLACKLISTED_ROLES = [VN_ALLSTARS_ROLES.probation, VN_ALLSTARS_ROLES.double_probation, VN_ALLSTARS_ROLES.clan_break]
 
 
 DEFAULT_ALLOWED_DISPLAY = ", ".join(f"<@&{rid}>" for rid in ALLOWED_JOIN_ROLES)
@@ -20,3 +22,20 @@ Extra_Entries = {
     VN_ALLSTARS_ROLES.legendary_donator: 1,
     VN_ALLSTARS_ROLES.shiny_donator: 1,
 }
+
+REG_GA_MIN_DURATION_SECONDS = 30 * 60
+
+def format_roles_display(role_ids, guild: discord.Guild) -> str:
+
+    if not role_ids:
+        return "None"
+
+    # Convert role IDs to role names
+    role_names = []
+    for role_id in role_ids:
+        role = guild.get_role(role_id)
+        if role:
+            role_names.append(role.name)
+        else:
+            continue  # Skip if role not found
+    return ", ".join(role_names) if role_names else "None"

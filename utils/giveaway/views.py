@@ -56,28 +56,30 @@ async def join_and_extra_entry(
     is_clan_ga = giveaway_type == "clan"
     vna_member_role = guild.get_role(VN_ALLSTARS_ROLES.vna_member)
     if is_clan_ga and vna_member_role not in user.roles:
-        await interaction.response.send_message(
-            "❌ You do not have the required role to join this giveaway.",
-            ephemeral=True,
-        )
+        return False, "You do not have the required role to join this giveaway."
 
     # Check for blacklisted roles
     for blacklisted_role_id in BLACKLISTED_ROLES:
         blacklisted_role = guild.get_role(blacklisted_role_id)
         if blacklisted_role in user.roles:
-            await interaction.response.send_message(
-                f"❌ You are not allowed to join this giveaway, as you have the {blacklisted_role.mention} role.",
-                ephemeral=True,
+            return (
+                False,
+                f"You are not allowed to join this giveaway, as you have the {blacklisted_role.name} role.",
             )
-            return
     # Calculate total entries
     total_entries, bonus_text = compute_total_entries(user)
     # Add entry to database
-    await upsert_ga_entry(bot, giveaway_id, user.id, user.name, total_entries)
-    await interaction.response.send_message(
-        f"✅ You have successfully joined the giveaway with {total_entries} entries{bonus_text}!",
-        ephemeral=True,
-    )
+    try:
+        await upsert_ga_entry(bot, giveaway_id, user.id, user.name, total_entries)
+        return True, f"Joined giveaway with {total_entries} entries{bonus_text}"
+    except Exception as e:
+        pretty_log(
+            tag="giveaway",
+            message=f"Error upserting giveaway entry for user {user.id} in giveaway {giveaway_id}: {e}",
+            include_trace=True,
+            level="error",
+        )
+        return False, "An error occurred while joining the giveaway."
 
 
 # 🌸─────────────────────────────────────────
@@ -196,64 +198,99 @@ class GiveawayButtonsView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         """🟢 Handle join button clicks with toggle and active check"""
+        loader = await pretty_defer(
+            interaction=interaction, content="Processing your entry...", ephemeral=True
+        )
+        pretty_log(
+            "debug",
+            f"join_button: triggered by user {interaction.user} ({interaction.user.id})",
+        )
         try:
-            # Fetch giveaway to ensure it exists and is active
-            giveaway_message_id = self.message_id
+            bot = interaction.client
+            giveaway_message_id = (
+                self.message_id
+                if hasattr(self, "message_id") and self.message_id
+                else interaction.message.id
+            )
+            pretty_log(
+                "debug", f"join_button: using giveaway_message_id={giveaway_message_id}"
+            )
             giveaway_info = await fetch_giveaway_row_by_message_id(
-                self.bot, giveaway_message_id
+                bot, giveaway_message_id
             )
 
             if not giveaway_info:
-                await interaction.response.send_message(
-                    "❌ This giveaway has already ended or is no longer active.",
-                    ephemeral=True,
+                pretty_log(
+                    "debug",
+                    f"join_button: giveaway_info not found for message_id={giveaway_message_id}",
                 )
+                await loader.error(content="This giveaway no longer exists.")
                 return
             # Get info
             giveaway_id = giveaway_info["giveaway_id"]
             giveaway_type = giveaway_info["giveaway_type"]
+            pretty_log(
+                "debug",
+                f"join_button: found giveaway_id={giveaway_id}, giveaway_type={giveaway_type}",
+            )
 
             # Check if user has joined already
             user_id = interaction.user.id
-            entry_count = await fetch_ga_entry(self.bot, giveaway_id, user_id)
+            entry_count_tuple = await fetch_ga_entry(bot, giveaway_id, user_id)
+            if isinstance(entry_count_tuple, tuple):
+                entry_count, _ = entry_count_tuple
+            else:
+                entry_count = entry_count_tuple
+            pretty_log(
+                "debug", f"join_button: user_id={user_id}, entry_count={entry_count}"
+            )
             if entry_count > 0:
                 # User already joined → remove entry
-                await delete_ga_entry(self.bot, giveaway_id, interaction.user.id)
-                await interaction.response.send_message(
-                    "✅ You have been removed from the giveaway.",
-                    ephemeral=True,
-                )
+                pretty_log("debug", f"join_button: user already joined, removing entry")
+                await delete_ga_entry(bot, giveaway_id, interaction.user.id)
+                await loader.success(content="You have left the giveaway.")
                 pretty_log(
                     tag="giveaway",
-                    message=f"🗑️ Removed {interaction.user.name}  from giveaway {self.giveaway_id}",
+                    message=f"🗑️ Removed {interaction.user.name}  from giveaway {giveaway_id}",
                 )
             else:
                 # User has not joined → add entry
-                await join_and_extra_entry(
-                    bot=self.bot,
+                pretty_log(
+                    "debug", f"join_button: user not joined, attempting to add entry"
+                )
+                success, message = await join_and_extra_entry(
+                    bot=bot,
                     interaction=interaction,
                     giveaway_id=giveaway_id,
                     user=interaction.user,
                     giveaway_type=giveaway_type,
                 )
+                pretty_log(
+                    "debug",
+                    f"join_button: join_and_extra_entry returned success={success}, message={message}",
+                )
+                if success:
+                    await loader.success(content=message)
+                    pretty_log(
+                        tag="giveaway",
+                        message=f"✅ Added {interaction.user.name} to giveaway {giveaway_id} with {message}",
+                    )
+                else:
+                    await loader.error(content=message)
+                    pretty_log(
+                        "debug",
+                        f"join_button: failed to join, error message sent to user",
+                    )
+                    return
         except Exception as e:
+            pretty_log("debug", f"join_button: exception occurred: {e}")
             pretty_log(
                 tag="giveaway",
                 message=f"Error handling join button click: {e}",
                 include_trace=True,
                 level="error",
             )
-            # Use followup if initial response might be done
-            if interaction.response.is_done():
-                await interaction.followup.send(
-                    f"❌ An error occurred while joining the giveaway: {e}",
-                    ephemeral=True,
-                )
-            else:
-                await interaction.response.send_message(
-                    f"❌ An error occurred while joining the giveaway: {e}",
-                    ephemeral=True,
-                )
+            await loader.error(content=f"An error occurred: {e}")
 
     @discord.ui.button(
         label="Participants",
@@ -266,12 +303,15 @@ class GiveawayButtonsView(discord.ui.View):
     ):
         """👥 Show ephemeral paginated participant list"""
         try:
-            giveaway_message_id = self.message_id
-            giveaway = await fetch_giveaway_row_by_message_id(
-                self.bot, giveaway_message_id
+            bot = interaction.client
+            giveaway_message_id = (
+                self.message_id
+                if hasattr(self, "message_id") and self.message_id
+                else interaction.message.id
             )
-            giveaway_id = giveaway.get("id")
-            entries = await fetch_entries_by_giveaway(self.bot, giveaway_id)
+            giveaway = await fetch_giveaway_row_by_message_id(bot, giveaway_message_id)
+            giveaway_id = giveaway.get("giveaway_id")
+            entries = await fetch_entries_by_giveaway(bot, giveaway_id)
             entries.sort(key=lambda x: x["joined_at"])
             if not entries:
                 await interaction.response.send_message(

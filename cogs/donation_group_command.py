@@ -124,7 +124,7 @@ class Donation_Group_Command(commands.Cog):
             total_donations=total_donations,
             monthly_donations=monthly_donations,
         )
-    donation_update.extras = {"category": "staff"}
+    donation_update.extras = {"category": "Staff"}
 
 
 async def setup(bot: commands.Bot):

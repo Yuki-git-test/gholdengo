@@ -489,9 +489,12 @@ class AuctionSystem(commands.Cog):
 
     # ---------------- User Commands ---------------- #
 
-    # ghouldengo list
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo list
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(
-        name="list", description="List active ghouldengo auctions (PokéMeow-style pages)"
+        name="list",
+        description="List active ghouldengo auctions (PokéMeow-style pages)",
     )
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_list(self, interaction: discord.Interaction):
@@ -505,6 +508,11 @@ class AuctionSystem(commands.Cog):
         emb = view.build_embed(interaction.user.id)
         await interaction.response.send_message(embed=emb, view=view)
 
+    auction_list.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo info
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(
         name="info", description="Show details about one ghouldengo auction"
     )
@@ -520,6 +528,11 @@ class AuctionSystem(commands.Cog):
             embed=self.auction_embed(auc, viewer_balance=bal)
         )
 
+    auction_info.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo lookup
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(
         name="lookup", description="Look up active ghouldengo auctions for a Pokémon"
     )
@@ -551,7 +564,14 @@ class AuctionSystem(commands.Cog):
             )
         await interaction.response.send_message(embed=emb)
 
-    @ghouldengo_group.command(name="bid", description="Bid on an ghouldengo auction by ID")
+    auction_lookup.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo bid
+    # 🍭──────────────────────────────
+    @ghouldengo_group.command(
+        name="bid", description="Bid on an ghouldengo auction by ID"
+    )
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_bid(self, interaction: discord.Interaction, id: int, amount: int):
         if amount <= 0:
@@ -642,6 +662,11 @@ class AuctionSystem(commands.Cog):
                 except Exception as e:
                     pretty_log("warn", f"Failed to notify previous bidder: {e}")
 
+    auction_bid.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo coins
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(name="coins", description="Check your balance")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def coins(self, interaction: discord.Interaction):
@@ -650,6 +675,11 @@ class AuctionSystem(commands.Cog):
             f"💰 You have {balance} {COIN}.", ephemeral=True
         )
 
+    coins.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo inventory
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(name="inventory", description="Show inventory")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def inventory_cmd(
@@ -669,6 +699,11 @@ class AuctionSystem(commands.Cog):
             emb.add_field(name="📦 Pokémon", value="None", inline=False)
         await interaction.response.send_message(embed=emb, ephemeral=True)
 
+    inventory_cmd.extras = {"category": "Public"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo legal_pokemon_list
+    # 🍭──────────────────────────────
     @ghouldengo_group.command(
         name="legal_pokemon_list",
         description="Show which Pokémon are legal in a generation or a named list",
@@ -724,8 +759,13 @@ class AuctionSystem(commands.Cog):
 
         await interaction.response.send_message(embed=emb)
 
+    legal_pokemon_list.extras = {"category": "Public"}
+
     # ---------------- Admin / Whitelisted Commands ---------------- #
 
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo register
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="register",
@@ -743,6 +783,11 @@ class AuctionSystem(commands.Cog):
             ephemeral=True,
         )
 
+    auc_register.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo start
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="start", description="Start a single ghouldengo auction"
@@ -803,6 +848,11 @@ class AuctionSystem(commands.Cog):
                 embed=self.auction_embed(auc, viewer_balance=bal)
             )
 
+    auction_start.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo start_gen
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="start_gen",
@@ -861,6 +911,11 @@ class AuctionSystem(commands.Cog):
             )
         await interaction.response.send_message("Done.", ephemeral=True)
 
+    auction_start_gen.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo start_multi
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="start_multi",
@@ -905,6 +960,11 @@ class AuctionSystem(commands.Cog):
             )
         await interaction.response.send_message("Done.", ephemeral=True)
 
+    auction_start_multi.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo start_copies
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="start_copies",
@@ -944,11 +1004,16 @@ class AuctionSystem(commands.Cog):
             )
         await interaction.response.send_message("Done.", ephemeral=True)
 
+    auction_start_copies.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo close
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="close", description="Manually close & settle a ghouldengo auction by ID"
     )
-   # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_close(self, interaction: discord.Interaction, id: int):
         auc = self.get_auction(id)
         if not auc:
@@ -971,6 +1036,11 @@ class AuctionSystem(commands.Cog):
             f"✅ Auction #{id} settled.", ephemeral=True
         )
 
+    auction_close.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo cancel
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="cancel",
@@ -1003,6 +1073,11 @@ class AuctionSystem(commands.Cog):
             f"🛑 Auction #{id} cancelled and any held funds refunded.", ephemeral=True
         )
 
+    auction_cancel.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo add_coins
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(name="add_coins", description="Add coins to a user")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
@@ -1018,6 +1093,11 @@ class AuctionSystem(commands.Cog):
             f"✅ Added {amount} {COIN} to {member.display_name}.", ephemeral=True
         )
 
+    add_coins.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo set_coins
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(name="set_coins", description="Set coins for a user")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
@@ -1030,6 +1110,11 @@ class AuctionSystem(commands.Cog):
             ephemeral=True,
         )
 
+    set_coins.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo ban
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(name="ban", description="Ban a user from bidding")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
@@ -1041,6 +1126,11 @@ class AuctionSystem(commands.Cog):
             f"✅ {member.display_name} is banned from bidding.", ephemeral=True
         )
 
+    ban.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo unban
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(name="unban", description="Unban a user")
     # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
@@ -1056,12 +1146,17 @@ class AuctionSystem(commands.Cog):
                 f"⚠️ {member.display_name} was not banned.", ephemeral=True
             )
 
+    unban.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
+    #   🎀 /ghouldengo reset_all
+    # 🍭──────────────────────────────
     @app_commands.check(check_admin_whitelist)
     @ghouldengo_group.command(
         name="reset_all",
         description="DANGER: Reset ALL auction data, coins, inventories, auctions, and bans",
     )
-   # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
+    # @app_commands.guilds(discord.Object(id=DEFAULT_GUILD_ID))
     async def auction_reset_all(self, interaction: discord.Interaction, confirm: str):
         if confirm != "CONFIRM":
             return await interaction.response.send_message(
@@ -1097,6 +1192,8 @@ class AuctionSystem(commands.Cog):
         await interaction.response.send_message(
             "✅ All auction data has been reset.", ephemeral=True
         )
+
+    auction_reset_all.extras = {"category": "Staff"}
 
 
 # ---------------- Cog Setup ---------------- #

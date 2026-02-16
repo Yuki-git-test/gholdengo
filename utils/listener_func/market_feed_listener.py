@@ -150,7 +150,11 @@ async def market_snipe_handler(
         new_embed.add_field(name="Amount", value=str(amount), inline=True)
         new_embed.add_field(
             name="Lowest Market",
-            value=f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {int(lowest_market):,}",
+            value=(
+                f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {int(lowest_market):,}"
+                if isinstance(lowest_market, (int, float)) and lowest_market != "?"
+                else f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} ?"
+            ),
             inline=True,
         )
 
@@ -456,19 +460,22 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             existing_data = market_value_cache.get(cache_key, {})
             existing_lowest = existing_data.get("true_lowest", float("inf"))
 
-            # Calculate the true lowest price among:
-            # 1. Current listing price
-            # 2. "Lowest Market" from embed
-            # 3. Previously tracked lowest
-            true_lowest = min(listed_price, lowest_market, existing_lowest)
+            # Ensure all values are not None for min/max
+            price_candidates = [listed_price, lowest_market, existing_lowest]
+            price_candidates = [p for p in price_candidates if p is not None]
+            if price_candidates:
+                true_lowest = min(price_candidates)
+            else:
+                true_lowest = 0
 
             # Only update if we have a valid price (not 0)
             if true_lowest == float("inf") or true_lowest == 0:
-                true_lowest = (
-                    max(listed_price, lowest_market)
-                    if max(listed_price, lowest_market) > 0
-                    else 0
-                )
+                max_candidates = [listed_price, lowest_market]
+                max_candidates = [p for p in max_candidates if p is not None]
+                if max_candidates and max(max_candidates) > 0:
+                    true_lowest = max(max_candidates)
+                else:
+                    true_lowest = 0
 
             # Only update DB if any value has changed
             cache_update = {

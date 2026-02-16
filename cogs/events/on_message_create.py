@@ -18,6 +18,7 @@ from utils.listener_func.donation_listener import (
 from utils.listener_func.market_feed_listener import market_feeds_listener
 from utils.logs.pretty_log import pretty_log
 from utils.prefix_commands.snipe_ga import create_snipe_ga_prefix
+from utils.prefix_commands.ga import create_ga_prefix
 # ️────────────────────────────────────────────
 #     Market Feed Channel IDs Set
 # ️────────────────────────────────────────────
@@ -92,6 +93,13 @@ class MessageCreateListener(commands.Cog):
             # ————————————————————————————————
             if content.startswith("sga.c"):
                 await create_snipe_ga_prefix(self.bot, message)
+
+            # ————————————————————————————————
+            # 🩵 Giveaway Prefix Command
+            # ————————————————————————————————
+            if content.startswith("ga.c"):
+                await create_ga_prefix(self.bot, message)
+
             # ————————————————————————————————
             # 🩵 Clan Donations
             # ————————————————————————————————

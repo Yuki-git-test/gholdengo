@@ -2,6 +2,7 @@ from utils.logs.pretty_log import pretty_log
 
 processed_market_feed_message_ids = set()
 processed_market_feed_ids = set()
+processing_end_giveaway_message_ids = set()
 
 
 def clear_processed_messages_cache():

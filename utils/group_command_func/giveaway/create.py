@@ -6,41 +6,20 @@ from discord.ui import Button, Modal, TextInput, View
 
 from Constants.aesthetic import *
 from Constants.giveaway import BLACKLISTED_ROLES, Extra_Entries
-from Constants.vn_allstars_constants import (
-    KHY_USER_ID,
-    VN_ALLSTARS_EMOJIS,
-    VN_ALLSTARS_ROLES,
-    VN_ALLSTARS_TEXT_CHANNELS,
-    YUKI_USER_ID,
-)
+from Constants.vn_allstars_constants import KHY_USER_ID, VN_ALLSTARS_TEXT_CHANNELS
+from utils.cache.global_variables import TESTING_GA
 from utils.db.ga_db import (
-    fetch_giveaway_id_by_message_id,
-    fetch_giveaway_row_by_message_id,
     update_giveaway_message_id,
     update_giveaway_thread_id,
     upsert_giveaway,
 )
-from utils.db.ga_entry_db import (
-    delete_ga_entry,
-    fetch_entries_by_giveaway,
-    fetch_ga_entry,
-    upsert_ga_entry,
-)
 from utils.essentials.role_checks import *
-from utils.giveaway.giveaway_funcs import (
-    build_ga_embed,
-    can_host_ga,
-    compute_total_entries,
-)
+from utils.giveaway.giveaway_funcs import build_ga_embed, can_host_ga
 from utils.giveaway.views import GiveawayButtonsView
 from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.parsers.duration import parse_total_duration
-from utils.visuals.colors import get_random_ghouldengo_color
-from utils.visuals.design_embed import design_embed
-from utils.visuals.pretty_defer import pretty_defer
-from utils.visuals.thumbnails import random_ga_thumbnail_url
 
 """bot: commands.Bot,
     interaction: discord.Interaction,
@@ -81,7 +60,7 @@ class GiveawayDetailsModal(Modal):
             required=True,
             max_length=2000,
             style=discord.TextStyle.paragraph,
-            placeholder="Enter any requirements or special message for the giveaway. This will be displayed in the giveaway embed.",
+            placeholder="Enter requirements or a special message (max 100 chars in placeholder)",
         )
         self.add_item(self.giveaway_message)
 
@@ -133,13 +112,13 @@ class GiveawayDetailsModal(Modal):
                 pretty_log("info", "✅ Giveaway embed built successfully")
                 view = GiveawayButtonsView(
                     bot=self.bot,
-                    giveaway_type=self.type,
+                    giveaway_type=self.giveaway_type,
                     giveaway_id=giveaway_id,
                     guild=self.channel.guild,
                 )
 
                 ga_msg = await self.channel.send(embed=ga_embed, view=view)
-                await self.channel.send(content=content)
+                content_msg = await self.channel.send(content=content)
                 await interaction.followup.send(
                     "Giveaway created successfully!", ephemeral=True
                 )
@@ -151,6 +130,15 @@ class GiveawayDetailsModal(Modal):
                 await update_giveaway_message_id(
                     bot=self.bot, giveaway_id=giveaway_id, message_id=ga_msg.id
                 )
+                # Make thread
+                thread = await ga_msg.create_thread(
+                    name=f"🎁 | ID: {giveaway_id}", auto_archive_duration=4320
+                )
+                thread_id = thread.id
+                await update_giveaway_thread_id(
+                    bot=self.bot, giveaway_id=giveaway_id, thread_id=thread_id
+                )
+
             except Exception as e:
                 await interaction.followup.send(
                     "An error occurred while building the giveaway embed.",
@@ -174,7 +162,7 @@ class GiveawayDetailsModal(Modal):
 # 🌸─────────────────────────────────────────
 #       Giveaway Modal (Popup for Staff)
 # 🌸─────────────────────────────────────────
-async def create_giveaway(
+async def create_giveaway_func(
     bot: commands.Bot,
     interaction: discord.Interaction,
     prize: str,
@@ -186,32 +174,37 @@ async def create_giveaway(
     image_link: str = None,
 ):
     """Handles the creation of a giveaway, including database operations and sending the giveaway message."""
-    # Defer the interaction to allow time for processing
-    loader = await pretty_defer(
-        interaction=interaction, text="Creating giveaway...", ephemeral=False
-    )
 
     # Check if user has required roles to use the command
     user_roles = [role.id for role in interaction.user.roles]
     success, error_msg = await can_host_ga(interaction.user)
     if not success:
-        await loader.error(error_msg)
+        await interaction.response.send_message(error_msg, ephemeral=True)
         return
     # Parse duration string
     try:
         total_duration = parse_total_duration(duration)
     except ValueError as e:
-        await loader.error(str(e))
+        await interaction.response.send_message(
+            "Invalid duration format. Please use a format like '1d2h30m'.",
+            ephemeral=True,
+        )
         return
 
     channel_id = (
         VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway
         if giveaway_type == "clan"
-        else VN_ALLSTARS_TEXT_CHANNELS.general_giveaway
+        else VN_ALLSTARS_TEXT_CHANNELS.giveaway
     )
+    if TESTING_GA:
+        channel_id = VN_ALLSTARS_TEXT_CHANNELS.khys_chamber
+
     channel = bot.get_channel(channel_id)
     if channel is None:
-        await loader.error("Giveaway channel not found.")
+        await interaction.response.send_message(
+            "An error occurred while fetching the giveaway channel. Please contact an administrator.",
+            ephemeral=True,
+        )
         pretty_log(
             "error",
             f"Channel with ID {channel_id} not found for giveaway creation.",
@@ -243,7 +236,7 @@ async def create_giveaway(
             host_name=host.display_name,
             giveaway_type=giveaway_type,
             prize=prize,
-            ends_at=duration,
+            ends_at=total_duration,
             max_winners=winners,
             channel_id=channel.id,
             image_link=image_link,
@@ -263,7 +256,7 @@ async def create_giveaway(
             host=host,
             giveaway_type=giveaway_type,
             prize=prize,
-            ends_at=duration,
+            ends_at=total_duration,
             winners=winners,
             image_link=image_link,
         )
@@ -279,13 +272,19 @@ async def create_giveaway(
         await interaction.followup.send(
             "Giveaway created successfully!", ephemeral=True
         )
-        view.message_id = (
-            ga_msg.id
-        )  # Store message ID in the view for later use
+        view.message_id = ga_msg.id  # Store message ID in the view for later use
 
         # Update giveaway record with message ID
         await update_giveaway_message_id(
             bot=bot, giveaway_id=giveaway_id, message_id=ga_msg.id
+        )
+        # Make thread
+        thread = await ga_msg.create_thread(
+            name=f"🎁 | ID: {giveaway_id}", auto_archive_duration=4320
+        )
+        thread_id = thread.id
+        await update_giveaway_thread_id(
+            bot=bot, giveaway_id=giveaway_id, thread_id=thread_id
         )
     except Exception as e:
         await interaction.followup.send(

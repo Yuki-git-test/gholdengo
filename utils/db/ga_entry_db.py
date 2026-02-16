@@ -8,9 +8,12 @@ from utils.logs.pretty_log import pretty_log
     user_id BIGINT,
     user_name TEXT,
     entry_count INT,
+    joined_at BIGINT,
     PRIMARY KEY (giveaway_id, user_id)
 );
 
+-- Migration script to add joined_at column
+ALTER TABLE giveaway_entries ADD COLUMN joined_at BIGINT;
 """
 
 
@@ -20,25 +23,32 @@ async def upsert_ga_entry(
     user_id: int,
     user_name: str,
     entry_count: int = 1,
+    joined_at: int = None,
 ):
     try:
         async with bot.pg_pool.acquire() as conn:
+            if joined_at is None:
+                import time
+
+                joined_at = int(time.time())
             await conn.execute(
                 """
-                INSERT INTO giveaway_entries (giveaway_id, user_id, user_name, entry_count)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO giveaway_entries (giveaway_id, user_id, user_name, entry_count, joined_at)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (giveaway_id, user_id) DO UPDATE
                 SET entry_count = giveaway_entries.entry_count + EXCLUDED.entry_count,
-                    user_name = EXCLUDED.user_name;
+                    user_name = EXCLUDED.user_name,
+                    joined_at = EXCLUDED.joined_at;
                 """,
                 giveaway_id,
                 user_id,
                 user_name,
                 entry_count,
+                joined_at,
             )
             pretty_log(
                 "info",
-                f"Upserted giveaway entry for user {user_name} ({user_id}) in giveaway {giveaway_id} with {entry_count} entries",
+                f"Upserted giveaway entry for user {user_name} ({user_id}) in giveaway {giveaway_id} with {entry_count} entries (joined_at={joined_at})",
                 label="Giveaway Entry DB",
             )
     except Exception as e:
@@ -55,7 +65,7 @@ async def fetch_entries_by_giveaway(bot: discord.Client, giveaway_id: int):
         async with bot.pg_pool.acquire() as conn:
             records = await conn.fetch(
                 """
-                SELECT user_id, user_name, entry_count FROM giveaway_entries
+                SELECT user_id, user_name, entry_count, joined_at FROM giveaway_entries
                 WHERE giveaway_id = $1
                 """,
                 giveaway_id,
@@ -65,6 +75,7 @@ async def fetch_entries_by_giveaway(bot: discord.Client, giveaway_id: int):
                     "user_id": record["user_id"],
                     "user_name": record["user_name"],
                     "entry_count": record["entry_count"],
+                    "joined_at": record["joined_at"],
                 }
                 for record in records
             ]
@@ -89,7 +100,7 @@ async def fetch_all_user_ga_entries(bot: discord.Client, user_id: int):
         async with bot.pg_pool.acquire() as conn:
             records = await conn.fetch(
                 """
-                SELECT giveaway_id, entry_count FROM giveaway_entries
+                SELECT giveaway_id, entry_count, joined_at FROM giveaway_entries
                 WHERE user_id = $1
                 """,
                 user_id,
@@ -98,6 +109,7 @@ async def fetch_all_user_ga_entries(bot: discord.Client, user_id: int):
                 {
                     "giveaway_id": record["giveaway_id"],
                     "entry_count": record["entry_count"],
+                    "joined_at": record["joined_at"],
                 }
                 for record in records
             ]
@@ -122,7 +134,7 @@ async def fetch_ga_entry(bot: discord.Client, giveaway_id: int, user_id: int):
         async with bot.pg_pool.acquire() as conn:
             record = await conn.fetchrow(
                 """
-                SELECT entry_count FROM giveaway_entries
+                SELECT entry_count, joined_at FROM giveaway_entries
                 WHERE giveaway_id = $1 AND user_id = $2
                 """,
                 giveaway_id,
@@ -131,10 +143,10 @@ async def fetch_ga_entry(bot: discord.Client, giveaway_id: int, user_id: int):
             if record:
                 pretty_log(
                     "info",
-                    f"Fetched giveaway entry for user ID {user_id} in giveaway {giveaway_id}: {record['entry_count']} entries",
+                    f"Fetched giveaway entry for user ID {user_id} in giveaway {giveaway_id}: {record['entry_count']} entries (joined_at={record['joined_at']})",
                     label="Giveaway Entry DB",
                 )
-                return record["entry_count"]
+                return record["entry_count"], record["joined_at"]
             else:
                 pretty_log(
                     "info",
@@ -157,7 +169,7 @@ async def fetch_all_ga_entries_for_a_ga(bot: discord.Client, giveaway_id: int):
         async with bot.pg_pool.acquire() as conn:
             records = await conn.fetch(
                 """
-                SELECT user_id, user_name, entry_count FROM giveaway_entries
+                SELECT user_id, user_name, entry_count, joined_at FROM giveaway_entries
                 WHERE giveaway_id = $1
                 """,
                 giveaway_id,
@@ -167,6 +179,7 @@ async def fetch_all_ga_entries_for_a_ga(bot: discord.Client, giveaway_id: int):
                     "user_id": record["user_id"],
                     "user_name": record["user_name"],
                     "entry_count": record["entry_count"],
+                    "joined_at": record["joined_at"],
                 }
                 for record in records
             ]

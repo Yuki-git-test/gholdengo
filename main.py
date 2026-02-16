@@ -11,6 +11,7 @@ from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.cache.cache_list import clear_processed_messages_cache
 from utils.cache.central_cache_loader import load_all_cache
 from utils.db.get_pg_pool import get_pg_pool
+from utils.functions.restore_views import restore_giveaway_views
 from utils.logs.pretty_log import pretty_log, set_ghouldengo_bot
 from utils.schedule.scheduler import setup_scheduler
 
@@ -134,12 +135,15 @@ async def on_ready():
 
     await load_all_cache(bot)
 
+    # Restore giveaway views
+    await restore_giveaway_views(bot)
+
     # ❀ Run startup checklist ❀
     await startup_checklist(bot)
 
     try:
         await bot.change_presence(
-            activity=discord.Game(name="/auction_list • /auction_bid")
+            activity=discord.Game(name="/ghouldengo list • /ghouldengo bid")
         )
     except Exception:
         pass

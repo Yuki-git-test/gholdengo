@@ -1,4 +1,5 @@
 import random
+import discord
 
 def get_random_ghouldengo_color():
     """Returns a random pastel color inspired by Gholdengo or Gimmighoul."""
@@ -15,4 +16,5 @@ def get_random_ghouldengo_color():
         (240, 255, 210),  # Light green
         (255, 220, 255),  # Pale magenta
     ]
-    return random.choice(pastel_colors)
+    r, g, b = random.choice(pastel_colors)
+    return discord.Colour.from_rgb(r, g, b)

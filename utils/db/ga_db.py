@@ -18,7 +18,31 @@ from utils.logs.pretty_log import pretty_log
     thread_id BIGINT,
     PRIMARY KEY (giveaway_id, message_id)
 );"""
-
+async def fetch_all_giveaways(bot: discord.Client):
+    """Fetch all giveaways with ended = false."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT * FROM giveaways
+                WHERE ended = FALSE
+                """,
+            )
+            giveaways = [record for record in records]
+            pretty_log(
+                "info",
+                f"Fetched {len(giveaways)} active giveaways",
+                label="Giveaway DB",
+            )
+            return giveaways
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching active giveaways: {e}",
+            label="Giveaway DB",
+            include_trace=True,
+        )
+        return []
 
 async def upsert_giveaway(
     bot: discord.Client,
@@ -327,11 +351,11 @@ async def fetch_all_due_giveaways(bot: discord.Client):
                     f"Marked {len(giveaway_ids)} due giveaways as ended",
                     label="Giveaway DB",
                 )
-            pretty_log(
+            """pretty_log(
                 "info",
                 f"Fetched {len(giveaways)} due giveaways that have not ended yet",
                 label="Giveaway DB",
-            )
+            )"""
             return giveaways
     except Exception as e:
         pretty_log(
@@ -353,11 +377,11 @@ async def delete_giveaways_which_ended_a_week_ago(bot: discord.Client):
                 WHERE ended = TRUE AND ends_at <= EXTRACT(EPOCH FROM NOW()) - 604800
                 """,
             )
-            pretty_log(
+            """pretty_log(
                 "info",
                 f"Deleted giveaways that ended more than a week ago",
                 label="Giveaway DB",
-            )
+            )"""
     except Exception as e:
         pretty_log(
             "error",

@@ -2,6 +2,11 @@ import re
 import time
 from datetime import timedelta
 
+from utils.cache.global_variables import TESTING_GA
+
+# 30 minutes in seconds
+MIN_GA_DURATION_SECONDS = 30 * 60
+
 
 def parse_total_seconds(duration_str: str) -> int:
     """Parses a duration string and returns total seconds."""
@@ -58,5 +63,8 @@ def parse_total_duration(duration_str: str) -> int:
     total_seconds = timedelta(
         days=days, hours=hours, minutes=minutes, seconds=seconds
     ).total_seconds()
+    if total_seconds < MIN_GA_DURATION_SECONDS and not TESTING_GA:
+        raise ValueError("Giveaway duration must be at least 30 minutes.")
+
     unix_end = int(time.time() + total_seconds)
     return int(unix_end)
