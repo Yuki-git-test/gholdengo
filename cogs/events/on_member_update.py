@@ -35,6 +35,7 @@ class OnMemberUpdateCog(commands.Cog):
         # Detect removed roles
         removed_roles = [role for role in before.roles if role not in after.roles]
 
+
         # Handle added roles
         if added_roles:
             for role in added_roles:

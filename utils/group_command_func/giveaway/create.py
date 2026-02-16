@@ -191,11 +191,12 @@ async def create_giveaway_func(
         )
         return
 
-    channel_id = (
-        VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway
-        if giveaway_type == "clan"
-        else VN_ALLSTARS_TEXT_CHANNELS.giveaway
-    )
+    channel_id = VN_ALLSTARS_TEXT_CHANNELS.giveaway
+    if giveaway_type == "clan":
+        channel_id = VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway
+    elif giveaway_type == "server booster":
+        channel_id = VN_ALLSTARS_TEXT_CHANNELS.server_booster
+
     if TESTING_GA:
         channel_id = VN_ALLSTARS_TEXT_CHANNELS.khys_chamber
 

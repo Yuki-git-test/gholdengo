@@ -22,7 +22,18 @@ Extra_Entries = {
     VN_ALLSTARS_ROLES.legendary_donator: 1,
     VN_ALLSTARS_ROLES.shiny_donator: 1,
 }
-
+GIVEAWAY_ROLES =[
+    VN_ALLSTARS_ROLES.probation,
+    VN_ALLSTARS_ROLES.double_probation,
+    VN_ALLSTARS_ROLES.clan_break,
+    VN_ALLSTARS_ROLES.vna_member,
+    VN_ALLSTARS_ROLES.amethyst_perks,
+    VN_ALLSTARS_ROLES.server_booster,
+    VN_ALLSTARS_ROLES.monthly_donator,
+    VN_ALLSTARS_ROLES.diamond_donator,
+    VN_ALLSTARS_ROLES.legendary_donator,
+    VN_ALLSTARS_ROLES.shiny_donator,
+]
 REG_GA_MIN_DURATION_SECONDS = 30 * 60
 
 def format_roles_display(role_ids, guild: discord.Guild) -> str:

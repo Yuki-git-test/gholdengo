@@ -389,3 +389,30 @@ async def delete_giveaways_which_ended_a_week_ago(bot: discord.Client):
             label="Giveaway DB",
             include_trace=True,
         )
+
+async def fetch_all_giveaway_by_type(bot: discord.Client, giveaway_type: str):
+    """Fetch all giveaways of a specific type and ended = false."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT * FROM giveaways
+                WHERE giveaway_type = $1 AND ended = FALSE
+                """,
+                giveaway_type,
+            )
+            giveaways = [record for record in records]
+            pretty_log(
+                "info",
+                f"Fetched {len(giveaways)} active giveaways of type {giveaway_type}",
+                label="Giveaway DB",
+            )
+            return giveaways
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching active giveaways of type {giveaway_type}: {e}",
+            label="Giveaway DB",
+            include_trace=True,
+        )
+        return []

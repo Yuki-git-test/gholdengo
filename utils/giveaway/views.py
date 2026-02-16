@@ -53,10 +53,13 @@ async def join_and_extra_entry(
     """Handles a user joining a giveaway and calculates their total entries."""
     guild = user.guild
 
-    is_clan_ga = giveaway_type == "clan"
+
     vna_member_role = guild.get_role(VN_ALLSTARS_ROLES.vna_member)
-    if is_clan_ga and vna_member_role not in user.roles:
-        return False, "You do not have the required role to join this giveaway."
+    server_booster_role = guild.get_role(VN_ALLSTARS_ROLES.server_booster)
+    if giveaway_type == "clan" and vna_member_role not in user.roles:
+        return False, f"You need the {vna_member_role.name} role to join this giveaway."
+    if giveaway_type == "server booster" and server_booster_role not in user.roles:
+        return False, f"You need the {server_booster_role.name} role to join this giveaway."
 
     # Check for blacklisted roles
     for blacklisted_role_id in BLACKLISTED_ROLES:

@@ -48,7 +48,7 @@ class Giveaway_Group_Command(commands.Cog):
         prize: str,
         duration: str,
         winners: int,
-        giveaway_type: Literal["general", "clan"],
+        giveaway_type: Literal["general", "clan", "server booster"],
         has_message: bool = False,
         image_link: str = None,
     ):

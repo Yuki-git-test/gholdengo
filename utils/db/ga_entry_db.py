@@ -305,3 +305,65 @@ async def delete_ga_entry(bot: discord.Client, giveaway_id: int, user_id: int):
             label="Giveaway Entry DB",
             include_trace=True,
         )
+
+
+async def delete_all_user_ga_rows(bot: discord.Client, user_id: int):
+    """Removes all giveaway rows for a user and returns a list of giveaway ids that user got removed from."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT giveaway_id FROM giveaway_entries
+                WHERE user_id = $1
+                """,
+                user_id,
+            )
+            giveaway_ids = [record["giveaway_id"] for record in records]
+            await conn.execute(
+                """
+                DELETE FROM giveaway_entries
+                WHERE user_id = $1
+                """,
+                user_id,
+            )
+            pretty_log(
+                "info",
+                f"Deleted giveaway entries for user ID {user_id} in giveaways {giveaway_ids}",
+                label="Giveaway Entry DB",
+            )
+            return giveaway_ids
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error deleting giveaway entries for user ID {user_id}: {e}",
+            label="Giveaway Entry DB",
+            include_trace=True,
+        )
+        return []
+async def fetch_all_user_ga_rows(bot: discord.Client, user_id: int):
+    """Fetches all giveaway rows for a user and returns a list of giveaway ids that user is entered in."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT giveaway_id FROM giveaway_entries
+                WHERE user_id = $1
+                """,
+                user_id,
+            )
+            giveaway_ids = [record["giveaway_id"] for record in records]
+            pretty_log(
+                "info",
+                f"Fetched giveaway entries for user ID {user_id} in giveaways {giveaway_ids}",
+                label="Giveaway Entry DB",
+            )
+            return giveaway_ids
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching giveaway entries for user ID {user_id}: {e}",
+            label="Giveaway Entry DB",
+            include_trace=True,
+        )
+        return []
+

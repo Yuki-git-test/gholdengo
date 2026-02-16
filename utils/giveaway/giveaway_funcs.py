@@ -75,11 +75,14 @@ def build_ga_embed(
     ends_text = f"<t:{ends_at}:R>"
     allowed_roles_display = ""
     if giveaway_type == "clan":
-        allowed_roles_display = f"- Allowed roles: {DEFAULT_ALLOWED_DISPLAY}\n"
+        allowed_roles_display = format_roles_display(ALLOWED_JOIN_ROLES, host.guild)
+    if giveaway_type == "server booster":
+        allowed_roles_display = format_roles_display([VN_ALLSTARS_ROLES.server_booster], host.guild)
+        
     extra_entries_display = format_extra_entries(host.guild)
     embed_color = get_random_ghouldengo_color()
     giveaway_role_mention = f"<@&{VN_ALLSTARS_ROLES.giveaways}>"
-    allowed_roles_display = format_roles_display(ALLOWED_JOIN_ROLES, host.guild)
+
     blacklisted_roles_display = format_roles_display(BLACKLISTED_ROLES, host.guild)
 
     if TESTING_GA:
@@ -92,7 +95,7 @@ def build_ga_embed(
         f"\n⏰ **Ends:** {ends_text}\n",
     ]
 
-    if giveaway_type == "clan":
+    if giveaway_type == "clan" or giveaway_type == "server booster":
         desc_lines.append(f"💙 **Allowed roles:** {allowed_roles_display}")
     desc_lines.append(f"🚫 **Blacklisted roles:** {blacklisted_roles_display}")
     desc_lines.append(f"\n✨ **Extra Entries:** {extra_entries_display}")
