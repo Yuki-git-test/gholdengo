@@ -1,0 +1,67 @@
+import re
+
+import discord
+from discord.ext import commands
+
+from Constants.vn_allstars_constants import POKEMEOW_APPLICATION_ID, VNA_SERVER_ID
+from utils.listener_func.dex_listener import dex_listener
+from utils.logs.pretty_log import pretty_log
+
+from .on_message_create import embed_has_field_name
+
+# ️────────────────────────────────────────────
+#        ⚔️ Message Triggers
+# ️────────────────────────────────────────────
+triggers = {
+    "price_data_listener": "Market Data & Trends",
+}
+
+
+# 🍭──────────────────────────────
+#   🎀 Event: On Message Edit
+# 🍭──────────────────────────────
+class OnMessageEditCog(commands.Cog):
+    """Cog to handle message edit events."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+
+        # Ignore edits made by bots except PokéMeow
+        if after.author.bot and after.author.id != POKEMEOW_APPLICATION_ID:
+            return
+
+        content = after.content if after.content else ""
+        first_embed = after.embeds[0] if after.embeds else None
+        first_embed_author_text = (
+            first_embed.author.name if first_embed and first_embed.author else ""
+        )
+        first_embed_description = first_embed.description if first_embed else ""
+        first_embed_footer_text = (
+            first_embed.footer.text if first_embed and first_embed.footer else ""
+        )
+        first_embed_title = first_embed.title if first_embed else ""
+
+        # ————————————————————————————————
+        # 🩵 VNA Edit Listener
+        # ————————————————————————————————
+        # Only log edits in GLA or CC server
+        if not after.guild or (after.guild.id != VNA_SERVER_ID):
+            return
+
+        # ————————————————————————————————
+        # 🩵 DEX LISTENER
+        # ————————————————————————————————
+        if first_embed:
+            if embed_has_field_name(first_embed, "Dex Number"):
+                pretty_log(
+                    "info",
+                    f"Detected dex command embed with 'Dex Number' field. Triggering dex listener.",
+                )
+                await dex_listener(self.bot, after)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(OnMessageEditCog(bot))

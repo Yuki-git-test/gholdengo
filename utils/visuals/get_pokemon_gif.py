@@ -2,6 +2,8 @@ from typing import Literal
 
 from Constants.paldea_galar_dict import get_dex_number_by_name
 from Constants.pokemon_gif import *
+from utils.db.market_value_db import fetch_image_link_cache
+from utils.functions.pokemon_func import format_names_for_market_value_lookup
 from utils.logs.pretty_log import pretty_log
 
 hyphen_mon_names = [
@@ -17,6 +19,21 @@ from utils.logs.debug_log import debug_log, enable_debug
 
 #enable_debug(f"{__name__}.get_pokemon_gif")
 # sync
+
+def get_pokemon_gif_from_cache(pokemon_name: str):
+    formatted_name = format_names_for_market_value_lookup(pokemon_name)
+    image_url = fetch_image_link_cache(formatted_name)
+    if not image_url:
+        pretty_log(
+            tag="error",
+            message=(
+                f"Image URL not found in cache for '{pokemon_name}' (formatted: '{formatted_name}')"
+            ),
+        )
+        return None
+    else:
+        return image_url
+
 
 
 def get_pokemon_gif(input_name: str):

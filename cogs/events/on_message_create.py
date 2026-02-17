@@ -6,7 +6,10 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_TEXT_CHANNELS,
     VNA_SERVER_ID,
 )
+from utils.cache.cache_list import active_lottery_thread_ids
 from utils.functions.donation_sticky_msg import check_and_send_sticky_msg
+from utils.listener_func.buy_lottery_ticket_listener import buy_lottery_ticket_listener
+from utils.listener_func.dex_listener import dex_listener
 from utils.listener_func.donation_listener import (
     clan_donate_listener,
     give_command_listener,
@@ -17,8 +20,9 @@ from utils.listener_func.donation_listener import (
 # ————————————————————————————————
 from utils.listener_func.market_feed_listener import market_feeds_listener
 from utils.logs.pretty_log import pretty_log
-from utils.prefix_commands.snipe_ga import create_snipe_ga_prefix
 from utils.prefix_commands.ga import create_ga_prefix
+from utils.prefix_commands.snipe_ga import create_snipe_ga_prefix
+
 # ️────────────────────────────────────────────
 #     Market Feed Channel IDs Set
 # ️────────────────────────────────────────────
@@ -30,6 +34,19 @@ MARKET_FEED_CHANNEL_IDS = {
 }
 
 CLAN_BANK_USER_NAMES = ["yki.on", "beaterxyz"]
+
+
+def embed_has_field_name(embed, name_to_match: str) -> bool:
+    """
+    Returns True if any field name in the embed matches the given string.
+    Returns False immediately if the embed has no fields.
+    """
+    if not hasattr(embed, "fields") or not embed.fields:
+        return False
+    for field in embed.fields:
+        if field.name == name_to_match:
+            return True
+    return False
 
 
 # 🐾────────────────────────────────────────────
@@ -100,6 +117,33 @@ class MessageCreateListener(commands.Cog):
             if content.startswith("ga.c"):
                 await create_ga_prefix(self.bot, message)
 
+            # ————————————————————————————————
+            # 🩵 DEX LISTENER
+            # ————————————————————————————————
+            if first_embed:
+                if embed_has_field_name(first_embed, "Dex Number"):
+                    pretty_log(
+                        "info",
+                        f"Detected dex command embed with 'Dex Number' field. Triggering dex listener.",
+                    )
+                    await dex_listener(self.bot, message)
+            # ————————————————————————————————
+            # 🩵 Buy Ticket Listener
+            # ————————————————————————————————
+            if message.channel.id in active_lottery_thread_ids:
+
+                if (
+                    content
+                    and "gave" in content
+                    and "PokeCoins" in content
+                    and any(name in content for name in CLAN_BANK_USER_NAMES)
+                ):
+                    pretty_log(
+                        "info",
+                        f"Detected clan bank donation message in lottery thread: {content}",
+                        label="DONATION_LISTENER",
+                    )
+                    await buy_lottery_ticket_listener(self.bot, message)
             # ————————————————————————————————
             # 🩵 Clan Donations
             # ————————————————————————————————

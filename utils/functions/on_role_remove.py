@@ -46,6 +46,7 @@ async def handle_role_remove(
     # ————————————————————————————————
     if role_id in SPECIAL_BOOSTER_ROLES or role_id == VN_ALLSTARS_ROLES.staff:
         await market_alert_role_remove_handler(bot, member, role)
+        
     # ————————————————————————————————
     # 🩵 VNA Giveaway Role Remove
     # ————————————————————————————————

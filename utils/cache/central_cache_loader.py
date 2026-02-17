@@ -7,6 +7,7 @@ from .market_alert_cache import load_market_alert_cache
 from .vna_members_cache import load_vna_members_cache
 from .webhook_url_cache import load_webhook_url_cache
 from utils.db.market_value_db import load_market_cache_from_db
+from utils.db.lottery import load_active_lotteries_into_cache
 
 async def load_all_cache(bot: discord.Client):
     """
@@ -27,6 +28,9 @@ async def load_all_cache(bot: discord.Client):
 
         # Load Market Value Cache from database
         await load_market_cache_from_db(bot)
+
+        # Load active lottery thread IDs into cache
+        await load_active_lotteries_into_cache(bot)
 
     except Exception as e:
         pretty_log(

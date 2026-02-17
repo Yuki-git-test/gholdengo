@@ -10,6 +10,58 @@ from utils.cache.cache_list import market_value_cache
 from utils.logs.pretty_log import pretty_log
 
 
+def fetch_market_value_cache(pokemon_name: str):
+    """
+    Get market value data for a specific Pokémon from cache.
+    Returns dict with market data or None if not found.
+    """
+    return market_value_cache.get(pokemon_name.lower())
+
+
+def fetch_lowest_market_value_cache(pokemon_name: str):
+    """
+    Get lowest market value for a Pokémon from cache.
+    Returns 0 if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("lowest_market", 0)
+    return 0
+
+
+def fetch_pokemon_exclusivity_cache(pokemon_name: str):
+    """
+    Get exclusivity status for a Pokémon from cache.
+    Returns False if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("is_exclusive", False)
+    return False
+
+
+def is_pokemon_exclusive_cache(pokemon_name: str):
+    """
+    Check if a Pokémon is exclusive based on cache data.
+    Returns False if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("is_exclusive", False)
+    return False
+
+
+def fetch_image_link_cache(pokemon_name: str):
+    """
+    Get image link for a Pokémon from cache.
+    Returns None if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("image_link", None)
+    return None
+
+
 # --------------------
 #  Upsert market value data
 # --------------------
@@ -22,10 +74,10 @@ async def set_market_value(
     current_listing: int = 0,
     true_lowest: int = 0,
     listing_seen: str | None = None,
-    image_link: str | None = None,
+    image_link: str = None,
 ):
     """
-    Insert or update market value data for a specific Pokémon.
+    Insert or update market value data for a Pokémon.
     """
     try:
         async with bot.pg_pool.acquire() as conn:
@@ -56,12 +108,12 @@ async def set_market_value(
                 image_link,
                 datetime.utcnow(),
             )
+
         pretty_log(
             tag="db",
-            message=f"Set market value for {pokemon_name} (Dex {dex_number})",
+            message=f"Updated market value for {pokemon_name}: true_lowest={true_lowest:,}",
             bot=bot,
         )
-        return True
 
     except Exception as e:
         pretty_log(
@@ -69,7 +121,416 @@ async def set_market_value(
             message=f"Failed to set market value for {pokemon_name}: {e}",
             bot=bot,
         )
-        return False
+
+
+def fetch_image_link_cache(pokemon_name: str):
+    """
+    Get image link for a Pokémon from cache.
+    Returns None if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("image_link", None)
+    return None
+
+
+async def update_market_value_via_listener(
+    bot,
+    pokemon_name: str,
+    lowest_market: int,
+    listing_seen: str,
+    current_listing: int = None,
+    image_link: str = None,
+    is_exclusive: bool = None,
+):
+    """
+    Update market value data for a Pokémon based on market view listener input.if exists, else insert new record with minimal data
+    Only updates lowest_market and listing_seen fields.
+    """
+    pokemon_name = pokemon_name.lower()
+    if current_listing is None:
+        current_listing = lowest_market
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            if image_link is not None and is_exclusive is not None:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (
+                        pokemon_name, lowest_market, listing_seen, last_updated, current_listing, image_link, is_exclusive
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        lowest_market = $2,
+                        listing_seen = $3,
+                        last_updated = $4,
+                        current_listing = $5,
+                        image_link = $6,
+                        is_exclusive = $7
+                    """,
+                    pokemon_name,
+                    lowest_market,
+                    listing_seen,
+                    datetime.utcnow(),
+                    current_listing,
+                    image_link,
+                    is_exclusive,
+                )
+            elif image_link is not None:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (
+                        pokemon_name, lowest_market, listing_seen, last_updated, current_listing, image_link
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        lowest_market = $2,
+                        listing_seen = $3,
+                        last_updated = $4,
+                        current_listing = $5,
+                        image_link = $6
+                    """,
+                    pokemon_name,
+                    lowest_market,
+                    listing_seen,
+                    datetime.utcnow(),
+                    current_listing,
+                    image_link,
+                )
+            elif is_exclusive is not None:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (
+                        pokemon_name, lowest_market, listing_seen, last_updated, current_listing, is_exclusive
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        lowest_market = $2,
+                        listing_seen = $3,
+                        last_updated = $4,
+                        current_listing = $5,
+                        is_exclusive = $6
+                    """,
+                    pokemon_name,
+                    lowest_market,
+                    listing_seen,
+                    datetime.utcnow(),
+                    current_listing,
+                    is_exclusive,
+                )
+            else:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (
+                        pokemon_name, lowest_market, listing_seen, last_updated, current_listing
+                    )
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        lowest_market = $2,
+                        listing_seen = $3,
+                        last_updated = $4,
+                        current_listing = $5
+                    """,
+                    pokemon_name,
+                    lowest_market,
+                    listing_seen,
+                    datetime.utcnow(),
+                    current_listing,
+                )
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["lowest_market"] = lowest_market
+                market_value_cache[pokemon_name]["listing_seen"] = listing_seen
+                market_value_cache[pokemon_name]["current_listing"] = current_listing
+                if image_link is not None:
+                    market_value_cache[pokemon_name]["image_link"] = image_link
+                if is_exclusive is not None:
+                    market_value_cache[pokemon_name]["is_exclusive"] = is_exclusive
+                pretty_log(
+                    tag="cache",
+                    message=f"Updated market value for {pokemon_name} via listener: lowest_market={lowest_market:,}, listing_seen={listing_seen}, current_listing={current_listing:,}"
+                    + (f", image_link updated" if image_link is not None else "")
+                    + (f", is_exclusive updated" if is_exclusive is not None else ""),
+                    bot=bot,
+                )
+            else:
+                market_value_cache[pokemon_name] = {
+                    "pokemon": pokemon_name,
+                    "lowest_market": lowest_market,
+                    "listing_seen": listing_seen,
+                    "current_listing": current_listing,
+                    "image_link": image_link if image_link is not None else None,
+                    "is_exclusive": is_exclusive if is_exclusive is not None else False,
+                }
+                pretty_log(
+                    tag="cache",
+                    message=f"Added new market value for {pokemon_name} via listener: lowest_market={lowest_market:,}, listing_seen={listing_seen}, current_listing={current_listing:,}"
+                    + (f", image_link set" if image_link is not None else "")
+                    + (f", is_exclusive set" if is_exclusive is not None else ""),
+                    bot=bot,
+                )
+        pretty_log(
+            tag="db",
+            message=f"Updated market value for {pokemon_name} via listener: lowest_market={lowest_market:,}, listing_seen={listing_seen}, current_listing={current_listing:,}"
+            + (f", image_link updated" if image_link is not None else "")
+            + (f", is_exclusive updated" if is_exclusive is not None else ""),
+            bot=bot,
+        )
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to update market value for {pokemon_name} via listener: {e}",
+            bot=bot,
+        )
+
+
+async def upsert_image_link(
+    bot, pokemon_name: str, image_link: str, is_exclusive: bool = None
+):
+    """
+    Upsert the image link for a Pokémon in the market value table.
+    """
+    pokemon_name = pokemon_name.lower()
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            if is_exclusive is not None:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (pokemon_name, image_link, last_updated, is_exclusive)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        image_link = $2,
+                        last_updated = $3,
+                        is_exclusive = $4
+                    """,
+                    pokemon_name,
+                    image_link,
+                    datetime.utcnow(),
+                    is_exclusive,
+                )
+            else:
+                await conn.execute(
+                    """
+                    INSERT INTO market_value (pokemon_name, image_link, last_updated)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (pokemon_name) DO UPDATE SET
+                        image_link = $2,
+                        last_updated = $3
+                    """,
+                    pokemon_name,
+                    image_link,
+                    datetime.utcnow(),
+                )
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["image_link"] = image_link
+                if is_exclusive is not None:
+                    market_value_cache[pokemon_name]["is_exclusive"] = is_exclusive
+            else:
+                market_value_cache[pokemon_name] = {
+                    "pokemon": pokemon_name,
+                    "image_link": image_link,
+                    "is_exclusive": is_exclusive if is_exclusive is not None else False,
+                }
+
+        pretty_log(
+            tag="db",
+            message=f"Upserted image link for {pokemon_name}"
+            + (
+                f", is_exclusive set to {is_exclusive}"
+                if is_exclusive is not None
+                else ""
+            ),
+            bot=bot,
+        )
+
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to upsert image link for {pokemon_name}: {e}",
+            bot=bot,
+        )
+
+
+async def update_image_link(
+    bot, pokemon_name: str, image_link: str, is_exclusive: bool = None
+):
+    """
+    Update the image link for a Pokémon in the market value table.
+    """
+    pokemon_name = pokemon_name.lower()
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            # Only update if row exists
+            row = await conn.fetchrow(
+                "SELECT pokemon_name FROM market_value WHERE pokemon_name = $1",
+                pokemon_name,
+            )
+            if not row:
+                pretty_log(
+                    tag="db",
+                    message=f"No market value row found for {pokemon_name}, skipping image link update.",
+                    bot=bot,
+                )
+                return
+            if is_exclusive is not None:
+                await conn.execute(
+                    "UPDATE market_value SET image_link = $1, last_updated = $2, is_exclusive = $3 WHERE pokemon_name = $4",
+                    image_link,
+                    datetime.utcnow(),
+                    is_exclusive,
+                    pokemon_name,
+                )
+            else:
+                await conn.execute(
+                    "UPDATE market_value SET image_link = $1, last_updated = $2 WHERE pokemon_name = $3",
+                    image_link,
+                    datetime.utcnow(),
+                    pokemon_name,
+                )
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["image_link"] = image_link
+                if is_exclusive is not None:
+                    market_value_cache[pokemon_name]["is_exclusive"] = is_exclusive
+
+        pretty_log(
+            tag="db",
+            message=f"Updated image link for {pokemon_name}"
+            + (
+                f", is_exclusive set to {is_exclusive}"
+                if is_exclusive is not None
+                else ""
+            ),
+            bot=bot,
+        )
+
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to update image link for {pokemon_name}: {e}",
+            bot=bot,
+        )
+
+
+async def update_market_value(
+    bot,
+    pokemon_name: str,
+    lowest_market: int,
+    listing_seen: str,
+    image_link: str = None,
+    is_exclusive: bool = None,
+):
+    """
+    Update specific fields of market value data for a Pokémon.
+    """
+    pokemon_name = pokemon_name.lower()
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            # Upsert logic: update if exists, else insert
+            await conn.execute(
+                """
+                INSERT INTO market_value (
+                    pokemon_name, lowest_market, listing_seen, last_updated, image_link, is_exclusive
+                )
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (pokemon_name) DO UPDATE SET
+                    lowest_market = $2,
+                    listing_seen = $3,
+                    last_updated = $4
+                    """
+                + (", image_link = $5" if image_link is not None else "")
+                + (", is_exclusive = $6" if is_exclusive is not None else "")
+                + " WHERE market_value.pokemon_name = $1",
+                pokemon_name,
+                lowest_market,
+                listing_seen,
+                datetime.utcnow(),
+                image_link if image_link is not None else None,
+                is_exclusive if is_exclusive is not None else None,
+            )
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["lowest_market"] = lowest_market
+                market_value_cache[pokemon_name]["listing_seen"] = listing_seen
+                if image_link is not None:
+                    market_value_cache[pokemon_name]["image_link"] = image_link
+                # Only update is_exclusive if provided
+                if is_exclusive is not None:
+                    market_value_cache[pokemon_name]["is_exclusive"] = is_exclusive
+            else:
+                market_value_cache[pokemon_name] = {
+                    "pokemon": pokemon_name,
+                    "lowest_market": lowest_market,
+                    "listing_seen": listing_seen,
+                    "image_link": image_link if image_link is not None else None,
+                    "is_exclusive": is_exclusive if is_exclusive is not None else False,
+                }
+
+        pretty_log(
+            tag="db",
+            message=f"Upserted market value for {pokemon_name}: lowest_market={lowest_market:,}, listing_seen={listing_seen}",
+            bot=bot,
+        )
+
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to upsert market value for {pokemon_name}: {e}",
+            bot=bot,
+        )
+
+
+async def update_is_exclusive(
+    bot, pokemon_name: str, is_exclusive: bool, image_link: str = None
+):
+    """
+    Update the is_exclusive field for a Pokémon in the market value table.
+    """
+    pokemon_name = pokemon_name.lower()
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            # Only update if row exists
+            row = await conn.fetchrow(
+                "SELECT pokemon_name FROM market_value WHERE pokemon_name = $1",
+                pokemon_name,
+            )
+            if not row:
+                pretty_log(
+                    tag="db",
+                    message=f"No market value row found for {pokemon_name}, skipping update.",
+                    bot=bot,
+                )
+                return
+            # Build update query
+            update_fields = ["is_exclusive = $1", "last_updated = $2"]
+            update_values = [is_exclusive, datetime.utcnow()]
+            param_index = 3
+            if image_link is not None:
+                update_fields.insert(1, f"image_link = ${param_index}")
+                update_values.append(image_link)
+                param_index += 1
+            update_query = f"UPDATE market_value SET {', '.join(update_fields)} WHERE pokemon_name = ${param_index}"
+            update_values.append(pokemon_name)
+            await conn.execute(update_query, *update_values)
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["is_exclusive"] = is_exclusive
+                if image_link is not None:
+                    market_value_cache[pokemon_name]["image_link"] = image_link
+
+        pretty_log(
+            tag="db",
+            message=f"Updated is_exclusive for {pokemon_name} to {is_exclusive}"
+            + (f", image_link updated" if image_link is not None else ""),
+            bot=bot,
+        )
+
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to update is_exclusive for {pokemon_name}: {e}",
+            bot=bot,
+        )
 
 
 # --------------------
@@ -185,9 +646,9 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     """
                     INSERT INTO market_value (
                         pokemon_name, dex_number, is_exclusive, lowest_market,
-                        current_listing, true_lowest, listing_seen, image_link, last_updated
+                        current_listing, true_lowest, listing_seen, last_updated
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     ON CONFLICT (pokemon_name) DO UPDATE SET
                         dex_number = $2,
                         is_exclusive = $3,
@@ -195,8 +656,7 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                         current_listing = $5,
                         true_lowest = LEAST($6, market_value.true_lowest),
                         listing_seen = COALESCE($7, market_value.listing_seen),
-                        image_link = COALESCE($8, market_value.image_link),
-                        last_updated = $9
+                        last_updated = $8
                     """,
                     pokemon_name.lower(),
                     data.get("dex", 0),
@@ -205,7 +665,6 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     data.get("current_listing", 0),
                     data.get("true_lowest", 0),
                     data.get("listing_seen", "Unknown"),
-                    data.get("image_link", None),
                     datetime.utcnow(),
                 )
                 update_count += 1
@@ -224,6 +683,21 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
             bot=bot,
         )
         return False
+
+
+async def check_and_load_market_cache(bot) -> dict:
+    """
+    Check if market value cache is loaded, if not load from database.
+    """
+    if not market_value_cache:
+        await load_market_cache_from_db(bot)
+        if not market_value_cache:
+            pretty_log(
+                tag="error",
+                message="Market value cache is empty after loading from database.",
+                bot=bot,
+            )
+    return market_value_cache
 
 
 # --------------------
@@ -250,12 +724,12 @@ async def load_market_cache_from_db(bot) -> dict:
                     "image_link": row.get("image_link", None),
                 }
 
-        pretty_log(
+        """pretty_log(
             tag="",
             message=f"Loaded {len(cache)} market value entries from database",
             label="💎 Market Value Cache",
             bot=bot,
-        )
+        )"""
         return market_value_cache.update(cache)  # Update the global cache
 
     except Exception as e:

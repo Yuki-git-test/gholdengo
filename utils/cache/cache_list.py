@@ -63,3 +63,6 @@ vna_members_cache: dict[int, dict] = {}
 
 market_value_cache: dict[str, dict] = {}
 snipe_ga_active = False
+
+active_lottery_thread_ids: set[int] = set()
+processing_end_lottery_ids: set[int] = set()
