@@ -283,6 +283,7 @@ async def delete_all_user_ga_entries(bot: discord.Client, user_id: int):
 
 async def delete_ga_entry(bot: discord.Client, giveaway_id: int, user_id: int):
     """Removes a user's giveaway row."""
+    
     try:
         async with bot.pg_pool.acquire() as conn:
             await conn.execute(

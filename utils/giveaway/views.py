@@ -43,32 +43,38 @@ from utils.visuals.thumbnails import random_ga_thumbnail_url
 ITEMS_PER_PAGE = 25  # max participants per page
 
 
-# Custom Select for removing only giveaway participants
-class RemoveUserSelect(discord.ui.Select):
+# Custom UserSelect for removing giveaway participants
+class RemoveUserSelect(discord.ui.UserSelect):
     def __init__(self, member_objs):
-        # Discord Selects support a maximum of 25 options
-        limited_members = member_objs[:25]
-        options = [
-            discord.SelectOption(label=member.display_name, value=str(member.id))
-            for member in limited_members
-        ]
         super().__init__(
             placeholder="Select users to remove",
             min_values=1,
-            max_values=min(5, len(options)),
-            options=options,
+            max_values=5,
         )
 
     async def callback(self, interaction: discord.Interaction):
-        selected_ids = self.values  # List of user IDs as strings
+        selected_members = self.values  # List of discord.Member objects
+        # Get the list of actual participants from the parent view
+        participant_ids = {
+            member.id for member in getattr(self.view, "member_objs", [])
+        }
         removed_names = []
-        for user_id in selected_ids:
-            member = interaction.guild.get_member(int(user_id))
-            if member:
+        not_participant_names = []
+        for member in selected_members:
+            if member and member.id in participant_ids:
                 await delete_ga_entry(self.view.bot, self.view.giveaway_id, member.id)
                 removed_names.append(member.display_name)
+            elif member:
+                not_participant_names.append(member.display_name)
+        msg = ""
+        if removed_names:
+            msg += f"{Emojis.check} Removed: {', '.join(removed_names)} from the giveaway.\n"
+        if not_participant_names:
+            msg += f"⚠️ Not participants: {', '.join(not_participant_names)}."
+        if not msg:
+            msg = "⚠️ No valid participants selected."
         await interaction.response.send_message(
-            f"{Emojis.check} Removed: {', '.join(removed_names)} from the giveaway.",
+            msg,
             ephemeral=True,
         )
 
