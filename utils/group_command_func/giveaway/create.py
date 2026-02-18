@@ -287,6 +287,7 @@ async def create_giveaway_func(
         await update_giveaway_thread_id(
             bot=bot, giveaway_id=giveaway_id, thread_id=thread_id
         )
+        await channel.send(content=content)
     except Exception as e:
         await interaction.followup.send(
             "An error occurred while building the giveaway embed.",

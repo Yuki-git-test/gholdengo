@@ -108,13 +108,13 @@ class MessageCreateListener(commands.Cog):
             # ————————————————————————————————
             # 🩵 Snipe Giveaway Prefix Command
             # ————————————————————————————————
-            if content.startswith("sga.c"):
+            if content.startswith("sg.c"):
                 await create_snipe_ga_prefix(self.bot, message)
 
             # ————————————————————————————————
             # 🩵 Giveaway Prefix Command
             # ————————————————————————————————
-            if content.startswith("ga.c"):
+            if content.startswith("g.c"):
                 await create_ga_prefix(self.bot, message)
 
             # ————————————————————————————————

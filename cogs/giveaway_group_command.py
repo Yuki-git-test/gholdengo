@@ -69,6 +69,38 @@ class Giveaway_Group_Command(commands.Cog):
     giveaway_create.extras = {"category": "Staff"}
 
     # 🍭──────────────────────────────
+    #   🎀 /giveaway snipe
+    # 🍭──────────────────────────────
+    @giveaway.command(
+        name="snipe",
+        description="Start a quick snipe giveaway.",
+    )
+    @app_commands.describe(
+        prize="Prize for the giveaway",
+        duration="Duration of the giveaway in seconds",
+        winners="Number of winners (default is 1)",
+    )
+    async def giveaway_snipe(
+        self,
+        interaction: discord.Interaction,
+        prize: str,
+        duration: int,
+        winners: int = 1,
+    ):
+        slash_cmd_name = "giveaway snipe"
+        await run_command_safe(
+            bot=self.bot,
+            interaction=interaction,
+            command_func=snipe_ga_func,
+            slash_cmd_name=slash_cmd_name,
+            prize=prize,
+            duration=duration,
+            winners=winners,
+        )
+
+    giveaway_snipe.extras = {"category": "Staff"}
+
+    # 🍭──────────────────────────────
     #   🎀 /giveaway end
     # 🍭──────────────────────────────
     @giveaway.command(
