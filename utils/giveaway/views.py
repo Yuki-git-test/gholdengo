@@ -198,7 +198,14 @@ class ParticipantsPaginationView(discord.ui.View):
             if not member:
                 continue
             total_entries = entry["entry_count"]  # Use exact DB value
-            lines.append(f"{idx}. **{member.display_name}** — {total_entries} entries")
+            if total_entries == 1:
+                entry_line = f"{idx}. **{member.display_name}** — {total_entries} entry"
+            else:
+                entry_line = (
+                    f"{idx}. **{member.display_name}** — {total_entries} entries"
+                )
+
+            lines.append(entry_line)
 
         embed.description = "\n".join(lines)
         total_participants = len(self.entries)
