@@ -46,9 +46,11 @@ ITEMS_PER_PAGE = 25  # max participants per page
 # Custom Select for removing only giveaway participants
 class RemoveUserSelect(discord.ui.Select):
     def __init__(self, member_objs):
+        # Discord Selects support a maximum of 25 options
+        limited_members = member_objs[:25]
         options = [
             discord.SelectOption(label=member.display_name, value=str(member.id))
-            for member in member_objs
+            for member in limited_members
         ]
         super().__init__(
             placeholder="Select users to remove",
