@@ -4,8 +4,8 @@ from Constants.aesthetic import *
 from utils.logs.pretty_log import pretty_log
 
 LOADING_EMOJI = Emojis.loading
-CHECK_EMOJI = "✅"
-ERROR_EMOJI = "❌"
+CHECK_EMOJI = Emojis.check
+ERROR_EMOJI = Emojis.error
 
 
 async def pretty_defer(

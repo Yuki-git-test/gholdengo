@@ -43,6 +43,43 @@ from utils.visuals.thumbnails import random_ga_thumbnail_url
 ITEMS_PER_PAGE = 25  # max participants per page
 
 
+# Custom Select for removing only giveaway participants
+class RemoveUserSelect(discord.ui.Select):
+    def __init__(self, member_objs):
+        options = [
+            discord.SelectOption(label=member.display_name, value=str(member.id))
+            for member in member_objs
+        ]
+        super().__init__(
+            placeholder="Select users to remove",
+            min_values=1,
+            max_values=min(5, len(options)),
+            options=options,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_ids = self.values  # List of user IDs as strings
+        removed_names = []
+        for user_id in selected_ids:
+            member = interaction.guild.get_member(int(user_id))
+            if member:
+                await delete_ga_entry(self.view.bot, self.view.giveaway_id, member.id)
+                removed_names.append(member.display_name)
+        await interaction.response.send_message(
+            f"{Emojis.check} Removed: {', '.join(removed_names)} from the giveaway.",
+            ephemeral=True,
+        )
+
+
+class Remove_Participants_View(View):
+    def __init__(self, bot: discord.Client, giveaway_id: int, member_objs):
+        super().__init__()
+        self.bot = bot
+        self.giveaway_id = giveaway_id
+        self.member_objs = member_objs
+        self.add_item(RemoveUserSelect(member_objs))
+
+
 async def join_and_extra_entry(
     bot: discord.Client,
     interaction: discord.Interaction,
@@ -53,13 +90,15 @@ async def join_and_extra_entry(
     """Handles a user joining a giveaway and calculates their total entries."""
     guild = user.guild
 
-
     vna_member_role = guild.get_role(VN_ALLSTARS_ROLES.vna_member)
     server_booster_role = guild.get_role(VN_ALLSTARS_ROLES.server_booster)
     if giveaway_type == "clan" and vna_member_role not in user.roles:
         return False, f"You need the {vna_member_role.name} role to join this giveaway."
     if giveaway_type == "server booster" and server_booster_role not in user.roles:
-        return False, f"You need the {server_booster_role.name} role to join this giveaway."
+        return (
+            False,
+            f"You need the {server_booster_role.name} role to join this giveaway.",
+        )
 
     # Check for blacklisted roles
     for blacklisted_role_id in BLACKLISTED_ROLES:
@@ -89,12 +128,26 @@ async def join_and_extra_entry(
 #     Ephemeral Paginated Participants View
 # 🌸─────────────────────────────────────────
 class ParticipantsPaginationView(discord.ui.View):
-    def __init__(self, entries: list, guild: discord.Guild):
+
+    def __init__(
+        self,
+        bot: discord.Client,
+        entries: list,
+        guild: discord.Guild,
+        member_objs,
+        user: discord.Member,
+        giveaway_id: int,
+    ):
         super().__init__(timeout=120)
         self.entries = entries
+        self.bot = bot
         self.guild = guild
+        self.member_objs = member_objs
+        self.user = user
+        self.giveaway_id = giveaway_id
         self.current_page = 0
         self.max_page = max((len(entries) - 1) // ITEMS_PER_PAGE, 0)
+        self.message = None  # to store the message object for later edits
 
         # Only add Prev/Next buttons if enough entries to paginate
         if len(entries) > ITEMS_PER_PAGE:
@@ -105,6 +158,16 @@ class ParticipantsPaginationView(discord.ui.View):
             next_button = Button(label="Next ➡️", style=discord.ButtonStyle.secondary)
             next_button.callback = self.next_button_callback
             self.add_item(next_button)
+        admin_role = self.guild.get_role(VN_ALLSTARS_ROLES.admin)
+        khy_role = self.guild.get_role(VN_ALLSTARS_ROLES.seafoam)
+        if admin_role in self.user.roles or khy_role in self.user.roles:
+            remove_participants_button = Button(
+                label="Remove Participants",
+                style=discord.ButtonStyle.danger,
+                emoji="🗑️",
+            )
+            remove_participants_button.callback = self.remove_participants_callback
+            self.add_item(remove_participants_button)
 
     def get_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -168,6 +231,24 @@ class ParticipantsPaginationView(discord.ui.View):
             pretty_log("error", f"Next button error: {e}")
             await interaction.response.send_message(
                 f"❌ Error navigating pages: {e}", ephemeral=True
+            )
+
+    async def remove_participants_callback(self, interaction: discord.Interaction):
+        try:
+            await interaction.message.delete()
+            view = Remove_Participants_View(
+                bot=self.bot, giveaway_id=self.giveaway_id, member_objs=self.member_objs
+            )
+            await interaction.response.send_message(
+                "Select Giveaway Participants to remove:", view=view, ephemeral=True
+            )
+        except Exception as e:
+            pretty_log(
+                "error",
+                f"Remove participants button error: {e}",
+            )
+            await interaction.response.send_message(
+                f"❌ Error opening remove participants view: {e}", ephemeral=True
             )
 
 
@@ -321,12 +402,24 @@ class GiveawayButtonsView(discord.ui.View):
                     "No participants yet 👀", ephemeral=True
                 )
                 return
-
+            member_objs = []
+            for entry in entries:
+                member = interaction.guild.get_member(entry["user_id"])
+                if member:
+                    member_objs.append(member)
             # Open ephemeral pagination view
-            view = ParticipantsPaginationView(entries=entries, guild=interaction.guild)
-            await interaction.response.send_message(
+            view = ParticipantsPaginationView(
+                bot=self.bot,
+                entries=entries,
+                guild=interaction.guild,
+                user=interaction.user,
+                member_objs=member_objs,
+                giveaway_id=giveaway_id,
+            )
+            sent_msg = await interaction.response.send_message(
                 embed=view.get_embed(), view=view, ephemeral=True
             )
+            view.message = sent_msg
             pretty_log(
                 "cmd",
                 f"{interaction.user} opened Participants view",
