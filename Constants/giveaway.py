@@ -8,7 +8,12 @@ REQUIRED_ROLES = [
     VN_ALLSTARS_ROLES.seafoam,
 ]
 ALLOWED_JOIN_ROLES = [VN_ALLSTARS_ROLES.vna_member]
-BLACKLISTED_ROLES = [VN_ALLSTARS_ROLES.probation, VN_ALLSTARS_ROLES.double_probation, VN_ALLSTARS_ROLES.clan_break]
+BLACKLISTED_ROLES = [
+    VN_ALLSTARS_ROLES.probation,
+    VN_ALLSTARS_ROLES.double_probation,
+    VN_ALLSTARS_ROLES.clan_break,
+    VN_ALLSTARS_ROLES.muted,
+]
 
 
 DEFAULT_ALLOWED_DISPLAY = ", ".join(f"<@&{rid}>" for rid in ALLOWED_JOIN_ROLES)
@@ -22,7 +27,7 @@ Extra_Entries = {
     VN_ALLSTARS_ROLES.legendary_donator: 1,
     VN_ALLSTARS_ROLES.shiny_donator: 1,
 }
-GIVEAWAY_ROLES =[
+GIVEAWAY_ROLES = [
     VN_ALLSTARS_ROLES.probation,
     VN_ALLSTARS_ROLES.double_probation,
     VN_ALLSTARS_ROLES.clan_break,
@@ -35,6 +40,7 @@ GIVEAWAY_ROLES =[
     VN_ALLSTARS_ROLES.shiny_donator,
 ]
 REG_GA_MIN_DURATION_SECONDS = 30 * 60
+
 
 def format_roles_display(role_ids, guild: discord.Guild) -> str:
 
