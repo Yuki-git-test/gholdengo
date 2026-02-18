@@ -235,7 +235,11 @@ class ParticipantsPaginationView(discord.ui.View):
 
     async def remove_participants_callback(self, interaction: discord.Interaction):
         try:
-            await interaction.message.delete()
+            try:
+                await interaction.message.delete()
+            except discord.NotFound:
+                # Message already deleted, ignore this error
+                pass
             view = Remove_Participants_View(
                 bot=self.bot, giveaway_id=self.giveaway_id, member_objs=self.member_objs
             )
