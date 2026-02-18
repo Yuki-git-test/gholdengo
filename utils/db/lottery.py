@@ -20,6 +20,7 @@ from utils.logs.pretty_log import pretty_log
     total_tickets bigint,
 );"""
 
+
 async def get_total_tickets(bot: discord.Client, lottery_id: int) -> int:
     """Fetch the total tickets sold for a lottery."""
     try:
@@ -36,7 +37,8 @@ async def get_total_tickets(bot: discord.Client, lottery_id: int) -> int:
     except Exception as e:
         pretty_log(message=f"Error fetching total tickets: {e}", tag="error")
         return 0
-    
+
+
 async def upsert_lottery(
     bot: discord.Client,
     prize: str,
@@ -158,7 +160,10 @@ async def get_lottery_id_by_thread_id(
         pretty_log(message=f"Error fetching lottery ID by thread ID: {e}", tag="error")
         return None
 
-async def add_to_total_tickets(bot: discord.Client, lottery_id: int, tickets_to_add: int):
+
+async def add_to_total_tickets(
+    bot: discord.Client, lottery_id: int, tickets_to_add: int
+):
     """Add a certain number of tickets to the total tickets sold for a lottery."""
     try:
         async with bot.pg_pool.acquire() as conn:
@@ -173,6 +178,7 @@ async def add_to_total_tickets(bot: discord.Client, lottery_id: int, tickets_to_
             )
     except Exception as e:
         pretty_log(message=f"Error adding to total tickets: {e}", tag="error")
+
 
 async def get_lottery_info_by_thread_id(
     bot: discord.Client, thread_id: int
@@ -221,7 +227,7 @@ async def fetch_all_due_lotteries(bot: discord.Client):
                 """
                 SELECT *
                 FROM lottery
-                WHERE ended = FALSE AND ends_on <= EXTRACT(EPOCH FROM NOW());
+                WHERE ended = FALSE AND ends_on > 0 AND ends_on <= EXTRACT(EPOCH FROM NOW());
                 """
             )
             return [dict(record) for record in results]
@@ -265,7 +271,10 @@ async def load_active_lotteries_into_cache(bot: discord.Client):
         tag="ready",
     )
 
-async def fetch_lottery_info_by_lottery_id(bot: discord.Client, lottery_id: int) -> dict | None:
+
+async def fetch_lottery_info_by_lottery_id(
+    bot: discord.Client, lottery_id: int
+) -> dict | None:
     """Fetch the lottery info associated with a given lottery ID."""
     try:
         async with bot.pg_pool.acquire() as conn:
@@ -283,3 +292,17 @@ async def fetch_lottery_info_by_lottery_id(bot: discord.Client, lottery_id: int)
             message=f"Error fetching lottery info by lottery ID: {e}", tag="error"
         )
         return None
+
+
+async def delete_lotteries_which_ended_a_week_ago(bot: discord.Client):
+    """Delete lotteries which ended over a week ago."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                DELETE FROM lottery
+                WHERE ended = TRUE AND ends_on <= EXTRACT(EPOCH FROM NOW()) - 7 * 24 * 60 * 60;
+                """
+            )
+    except Exception as e:
+        pretty_log(message=f"Error deleting old lotteries: {e}", tag="error")

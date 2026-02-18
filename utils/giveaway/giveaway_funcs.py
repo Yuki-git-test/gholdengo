@@ -35,7 +35,6 @@ def compute_total_entries(user: discord.Member):
         bonus_text = ""
     return total_entries, bonus_text
 
-
 def format_extra_entries(guild: discord.Guild) -> str:
     # Since Extra_Entries is now a dict mapping role_id to entry_bonus (int), ignore entry_group
     if not Extra_Entries:
@@ -78,7 +77,7 @@ def build_ga_embed(
         allowed_roles_display = format_roles_display(ALLOWED_JOIN_ROLES, host.guild)
     if giveaway_type == "server booster":
         allowed_roles_display = format_roles_display([VN_ALLSTARS_ROLES.server_booster], host.guild)
-        
+
     extra_entries_display = format_extra_entries(host.guild)
     embed_color = get_random_ghouldengo_color()
     giveaway_role_mention = f"<@&{VN_ALLSTARS_ROLES.giveaways}>"

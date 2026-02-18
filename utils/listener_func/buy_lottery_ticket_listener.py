@@ -4,7 +4,7 @@ import time
 import discord
 from discord.ext import commands
 
-from Constants.aesthetic import Thumbnails
+from Constants.aesthetic import Emojis, Thumbnails
 from Constants.lottery import Lotto_Extra_Entries
 from Constants.vn_allstars_constants import (
     KHY_USER_ID,
@@ -44,14 +44,29 @@ from utils.visuals.pretty_defer import pretty_defer
 from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
 
 
+async def create_and_send_winner_announcement(bot, lottery_info, winners):
+    channel_id = lottery_info["channel_id"]
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        pretty_log(
+            "error",
+            f"Could not find channel {channel_id} for lottery id {lottery_info['lottery_id']} when trying to send winner announcement.",
+        )
+        return
+    lottery_role_mention = f"<@&{VN_ALLSTARS_ROLES.lottery}>"
+    if TESTING_LOTTERY:
+        lottery_role_mention = ""
+    if winners == "No winners":
+        announcement = f"{lottery_role_mention} has ended. No one bought tickets."
+    else:
+        announcement = f"{lottery_role_mention} has ended,🏆 Congratulations {winners}! You won the lottery!"
+    await channel.send(announcement)
+
+
 async def create_lottery_tracker_embed(
     bot,
     user: discord.Member,
     lottery_id: int,
-    is_server_booster: bool,
-    is_shiny_donator: bool,
-    shiny_extra_entry: int,
-    booster_extra_entry: int,
     lottery_type: str,
 ):
     user_lottery_entry = await fetch_lottery_entry(
@@ -60,56 +75,57 @@ async def create_lottery_tracker_embed(
     lottery_info = await fetch_lottery_info_by_lottery_id(bot, lottery_id)
     channel_id = lottery_info["channel_id"]
     message_id = lottery_info["message_id"]
-    type
+
     user_entries = user_lottery_entry["entries"] if user_lottery_entry else 0
     base_entries = user_entries
     bonus_lines = []
     total_entries = user_entries
-    if is_shiny_donator:
-        base_entries -= shiny_extra_entry
-        bonus_lines.append(f"- **Shiny Donator Bonus:** +{shiny_extra_entry} entries")
-    if is_server_booster:
-        base_entries -= booster_extra_entry
-        bonus_lines.append(f"- **Server Booster Bonus:** +{booster_extra_entry} entry")
+    for role_id, bonus_entry in Lotto_Extra_Entries.items():
+        role = user.guild.get_role(role_id)
+        if role in user.roles:
+            base_entries -= bonus_entry
+            if role:
+                if bonus_entry == 1:
+                    entry_line = f"- **{role.name} Bonus:** +{bonus_entry} Ticket"
+                else:
+                    entry_line = f"- **{role.name} Bonus:** +{bonus_entry} Tickets"
+                bonus_lines.append(entry_line)
+            else:
+                bonus_lines.append(
+                    f"- **Role {role_id} Bonus:** +{bonus_entry} Tickets"
+                )
+
     bonus_text = "\n".join(bonus_lines) if bonus_lines else ""
 
     # Build tracker text
     if bonus_lines:
         tracker_text = (
-            f"**Base Entries:** {base_entries}\n"
+            f"**Base Tickets:** {base_entries}\n"
             f"{bonus_text}\n"
-            f"- **Total Entries:** {total_entries}"
+            f"- **Total Tickets:** {total_entries}"
         )
     else:
-        tracker_text = f"Total Entries: {total_entries}"
+        tracker_text = f"Total Tickets: {total_entries}"
+    # Thumbnail based on lottery type
+    if lottery_type == "pokemon":
+        thumbnail_url = Thumbnails.pokemon_lottery_ticket
+        embed_color = 0xFF69B4  # hot pink hex
+    elif lottery_type == "coin":
+        thumbnail_url = Thumbnails.coin_lottery_ticket
+        embed_color = 0xFFD700  # gold hex
+    else:
+        thumbnail_url = None
     # Set prefix emoji and color based on roles
     prefix = ""
-    embed_color = None
-    if is_shiny_donator and is_server_booster:
-        prefix = "💜"  # pastel purple
-        embed_color = 0xC3A6FF  # pastel purple hex
-    elif is_shiny_donator:
-        prefix = "🌸"  # pastel pink
-        embed_color = 0xFFB6C1  # pastel pink hex
-    elif is_server_booster:
-        prefix = "💖"  # hot pink
-        embed_color = 0xFF69B4  # hot pink hex
-    else:
-        prefix = "🥇"  # gold
-        embed_color = 0xFFD700  # gold hex
+    if bonus_lines:
+        prefix = "💎"
+
     name = f"{prefix} {user.display_name}"
     lottery_link = (
         f"https://discord.com/channels/{user.guild.id}/{channel_id}/{message_id}"
     )
-    desc = f"- [View Lottery]({lottery_link})\n- {tracker_text}"
+    desc = f"- [Lottery ID: {lottery_id}]({lottery_link})\n- {tracker_text}"
 
-    # Thumbnail based on lottery type
-    if lottery_type == "pokemon":
-        thumbnail_url = Thumbnails.pokemon_lottery_ticket
-    elif lottery_type == "coin":
-        thumbnail_url = Thumbnails.coin_lottery_ticket
-    else:
-        thumbnail_url = None
     # Example usage: create embed with prefix and color
     embed = discord.Embed(description=desc, color=embed_color)
     embed.set_author(name=name, icon_url=user.display_avatar.url)
@@ -123,7 +139,7 @@ def update_lottery_embed_with_winners(embed: discord.Embed, winners):
     # Get the embed description and split into lines
     desc_lines = embed.description.split("\n")
     new_desc_lines = []
-    winner_line = f"🏆 **Winner:** {', '.join(winners)}"
+    winner_line = f"🏆 **Winner:** {winners}"
     winner_added = False
 
     for line in desc_lines:
@@ -193,12 +209,42 @@ async def pick_lottery_winners(
         await delete_lottery_entry(bot, lottery_id=lottery_id, user_id=winner_id)
         weighted_entries = [uid for uid in weighted_entries if uid != winner_id]
     winners_str = (
-        f"{', '.join([winner['mention'] for winner in winners])}"
+        ", ".join([winner["mention"] for winner in winners])
         if winners
         else "No winners"
     )
 
     return winners_str
+
+
+async def calculate_number_of_tickets_and_update_entry(
+    bot,
+    user: discord.Member,
+    lottery_id: int,
+    tickets_bought: int,
+):
+    """Calculates the total number of tickets whether it has bonus entries or not."""
+    # Check if user has an entry already to determine if we need to apply bonus entries or not
+    user_entry = await fetch_lottery_entry(bot, lottery_id=lottery_id, user_id=user.id)
+    if user_entry:
+        total_tickets = tickets_bought
+        await add_tickets_to_entry(
+            bot, lottery_id=lottery_id, user_id=user.id, tickets_to_add=total_tickets
+        )
+    else:
+        for role_id, bonus_entry in Lotto_Extra_Entries.items():
+            role = user.guild.get_role(role_id)
+            if role in user.roles:
+                tickets_bought += bonus_entry
+        total_tickets = tickets_bought
+        await upsert_lottery_entry(
+            bot,
+            lottery_id=lottery_id,
+            user_id=user.id,
+            user_name=user.name,
+            entries=total_tickets,
+        )
+    return total_tickets
 
 
 async def end_lottery(bot: commands.Bot, lottery_id: int):
@@ -224,7 +270,14 @@ async def end_lottery(bot: commands.Bot, lottery_id: int):
     thread = bot.get_channel(thread_id)
     if thread:
         try:
-            await thread.edit(locked=True)
+            # Change thread name to use lock emoji
+            old_name = thread.name
+            # Replace ticket emoji with lock emoji if present, else just prepend lock
+            if old_name.startswith("🎟️"):
+                new_name = old_name.replace("🎟️", "🔒", 1)
+            else:
+                new_name = f"🔒 {old_name}"
+            await thread.edit(name=new_name, locked=True)
         except Exception as e:
             pretty_log(
                 "error",
@@ -278,6 +331,8 @@ async def end_lottery(bot: commands.Bot, lottery_id: int):
         processing_end_lottery_ids.remove(lottery_id)
     # Mark lottery as ended in db
     await mark_lottery_ended(bot, lottery_id)
+    await create_and_send_winner_announcement(bot, lottery_info, winners)
+
     processing_end_lottery_ids.remove(lottery_id)
 
 
@@ -301,6 +356,15 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         )
         return
     replied_message_object = message.reference.resolved if message.reference else None
+    if replied_message_object:
+        # React a loading emoji to the replied message to indicate we're processing the ticket purchase
+        try:
+            await replied_message_object.add_reaction(Emojis.loading)
+        except Exception as e:
+            pretty_log(
+                "error",
+                f"Could not add loading reaction to message {replied_message_object.id} when processing lottery ticket purchase for message {message.id}. Error: {e}",
+            )
     # Check if any of the clan bank ids are mentioned in the replied message
     if not any(str(clan_bank_id) in replied_message for clan_bank_id in CLAN_BANK_IDS):
         pretty_log(
@@ -340,36 +404,29 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         )
         return
 
+    # Cap tickets if max_tickets is set and handle refund
+    if max_tickets != 0:
+        # Get current tickets sold
+        current_tickets_sold = await get_total_tickets(bot, lottery_id=lottery_id)
+        available_tickets = max_tickets - current_tickets_sold
+        if available_tickets <= 0:
+            # No tickets left
+            await message.channel.send(f"All tickets for this lottery are sold out!")
+            return
+        if tickets_bought > available_tickets:
+            # Cap tickets and calculate refund
+            excess_tickets = tickets_bought - available_tickets
+            refund_amount = excess_tickets * ticket_cost
+            tickets_bought = available_tickets
+            # Ask bank account to refund excess
+            await message.channel.send(
+                f"You requested more tickets than available. Only {available_tickets} ticket(s) were purchased. Please ask for a refund {refund_amount:,} Pokécoins for the excess {excess_tickets} ticket(s)."
+            )
+
     # Get lottery entry for the member
-    server_booster_role = guild.get_role(VN_ALLSTARS_ROLES.server_booster)
-    shiny_donator_role = guild.get_role(VN_ALLSTARS_ROLES.shiny_donator)
-    shiny_bonus_extry = Lotto_Extra_Entries.get(VN_ALLSTARS_ROLES.shiny_donator, 0)
-    server_booster_bonus_entry = Lotto_Extra_Entries.get(
-        VN_ALLSTARS_ROLES.server_booster, 0
+    total_tickets = await calculate_number_of_tickets_and_update_entry(
+        bot, user=member, lottery_id=lottery_id, tickets_bought=tickets_bought
     )
-    is_server_booster = server_booster_role in member.roles
-    is_shiny_donator = shiny_donator_role in member.roles
-    if not await user_has_lottery_entry(bot, lottery_id=lottery_id, user_id=user_id):
-        bonus = 0
-        if server_booster_role in member.roles and shiny_donator_role in member.roles:
-            bonus = shiny_bonus_extry + server_booster_bonus_entry
-        elif server_booster_role in member.roles:
-            bonus = server_booster_bonus_entry
-        elif shiny_donator_role in member.roles:
-            bonus = shiny_bonus_extry
-        total_tickets = tickets_bought + bonus
-        await upsert_lottery_entry(
-            bot,
-            lottery_id=lottery_id,
-            user_id=user_id,
-            user_name=member.name,
-            entries=total_tickets,
-        )
-    else:
-        total_tickets = tickets_bought
-        await add_tickets_to_entry(
-            bot, lottery_id=lottery_id, user_id=user_id, tickets_to_add=tickets_bought
-        )
     # Update total tickets in lottery db
     await add_to_total_tickets(bot, lottery_id=lottery_id, tickets_to_add=total_tickets)
     new_tickets_sold = await get_total_tickets(bot, lottery_id=lottery_id)
@@ -407,13 +464,6 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             f"Could not edit lottery message {message_id} to update tickets sold for lottery id {lottery_id} after ticket purchase. Message id: {message.id}. Error: {e}",
         )
         return
-    # Check if max tickets has been reached and end lottery if so
-    if max_tickets != 0 and new_tickets_sold >= max_tickets:
-        pretty_log(
-            "info",
-            f"Max tickets reached for lottery id {lottery_id}. Ending lottery. Message id: {message.id}",
-        )
-        await end_lottery(bot, lottery_id)
 
     # Determine lottery type based on embed description
     embed_description = lottery_embed.description
@@ -428,10 +478,6 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         bot,
         user=member,
         lottery_id=lottery_id,
-        is_server_booster=is_server_booster,
-        is_shiny_donator=is_shiny_donator,
-        shiny_extra_entry=shiny_bonus_extry,
-        booster_extra_entry=server_booster_bonus_entry,
         lottery_type=lottery_type,
     )
     tracker_channel_id = VN_ALLSTARS_TEXT_CHANNELS.lottery_tracker
@@ -445,10 +491,28 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
     try:
         if replied_message_object:
             await replied_message_object.add_reaction("🎟️")
-        purchase_message = f"**{member.name}** bought {tickets_bought} ticket(s) for Lottery id {lottery_id}."
+            await replied_message_object.remove_reaction(Emojis.loading, bot.user)
+        purchase_message = f"**{member.name}** bought {tickets_bought} ticket(s) for Lottery ID {lottery_id}."
         await message.channel.send(purchase_message)
     except Exception as e:
         pretty_log(
             "error",
             f"Could not add reaction to message {message.id} after lottery ticket purchase. Error: {e}",
         )
+    # Check if max tickets has been reached and end lottery if so
+    if max_tickets != 0 and new_tickets_sold >= max_tickets:
+        pretty_log(
+            "info",
+            f"Max tickets reached for lottery id {lottery_id}. Ending lottery. Message id: {message.id}",
+        )
+        try:
+            await end_lottery(bot, lottery_id)
+            pretty_log(
+                "info",
+                f"Successfully ended lottery id {lottery_id} after max tickets reached. Message id: {message.id}",
+            )
+        except Exception as e:
+            pretty_log(
+                "error",
+                f"Error ending lottery id {lottery_id} after max tickets reached. Message id: {message.id}. Error: {e}",
+            )

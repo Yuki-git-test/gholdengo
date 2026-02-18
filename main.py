@@ -46,6 +46,7 @@ async def startup_checklist(bot: commands.Bot):
         market_value_cache,
         vna_members_cache,
         webhook_url_cache,
+        active_lottery_thread_ids
     )
 
     total_market_values = len(market_value_cache)
@@ -55,6 +56,7 @@ async def startup_checklist(bot: commands.Bot):
     print(f"✅ {len(vna_members_cache)} 🪙  VNA Members")
     print(f"✅ {len(market_alert_cache)} 🛍️  Market Alerts")
     print(f"✅ {total_market_values:,} 💵  Market Values")
+    print(f"✅ {len(active_lottery_thread_ids)} 🎟️  Active Lottos")
     print(f"✅ {len(webhook_url_cache)} 🏷️  Webhook Urls")
     pg_status = "Ready" if hasattr(bot, "pg_pool") else "Not Ready"
     print(f"✅ {pg_status} 🛒  PostgreSQL Pool")

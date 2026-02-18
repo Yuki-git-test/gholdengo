@@ -16,7 +16,7 @@ from utils.functions.pokemon_func import is_mon_exclusive
 from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
 
-enable_debug(f"{__name__}.dex_listener")
+#enable_debug(f"{__name__}.dex_listener")
 
 
 def extract_pokemon_name_and_dex(text):

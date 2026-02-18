@@ -3,7 +3,10 @@ from utils.logs.pretty_log import pretty_log
 processed_market_feed_message_ids = set()
 processed_market_feed_ids = set()
 processing_end_giveaway_message_ids = set()
+snipe_ga_active = False
 
+active_lottery_thread_ids: set[int] = set()
+processing_end_lottery_ids: set[int] = set()
 
 def clear_processed_messages_cache():
     """Clears all processed message ID caches."""
@@ -62,7 +65,3 @@ vna_members_cache: dict[int, dict] = {}
 # }
 
 market_value_cache: dict[str, dict] = {}
-snipe_ga_active = False
-
-active_lottery_thread_ids: set[int] = set()
-processing_end_lottery_ids: set[int] = set()

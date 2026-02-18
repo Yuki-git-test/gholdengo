@@ -25,12 +25,22 @@ def get_pokemon_gif_from_cache(pokemon_name: str):
     image_url = fetch_image_link_cache(formatted_name)
     if not image_url:
         pretty_log(
-            tag="error",
+            tag="info",
             message=(
                 f"Image URL not found in cache for '{pokemon_name}' (formatted: '{formatted_name}')"
             ),
         )
-        return None
+        # Fallback to fetching the GIF using the original name formatting
+        image_url = get_pokemon_gif(pokemon_name)
+        if not image_url:
+            pretty_log(
+                tag="info",
+                message=(
+                    f"Failed to fetch Pokémon GIF for '{pokemon_name}' using fallback method."
+                ),
+            )
+            return None
+        return image_url
     else:
         return image_url
 

@@ -6,6 +6,7 @@ from utils.logs.pretty_log import pretty_log
 
 # 🧹 Import your scheduled tasks
 from utils.background_tasks.giveaway_end_checker import giveaway_end_checker
+from utils.background_tasks.lottery_end_checker import lottery_end_checker
 
 TEST_SECONDS = 1
 ACTUAL_SECONDS = 60
@@ -52,6 +53,9 @@ class CentralLoop(commands.Cog):
                 # 🎁 Check and end due giveaways
                 await giveaway_end_checker(self.bot)
 
+                # 🎟️ Check and end due lotteries
+                await lottery_end_checker(self.bot)
+
             except Exception as e:
                 pretty_log(
                     "error",
@@ -78,5 +82,6 @@ async def setup(bot: commands.Bot):
     print("\n[📋 CENTRAL LOOP CHECKLIST] Scheduled tasks loaded:")
     print("  ─────────────────────────────────────────────")
     print("  ✅  🎁 giveaway_end_checker")
+    print("  ✅  🎟️ lottery_end_checker")
     print("  💸 CentralLoop ticking every 60 seconds!")
     print("  ─────────────────────────────────────────────\n")

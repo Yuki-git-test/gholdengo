@@ -16,7 +16,7 @@ from utils.essentials.parsers import parse_compact_number
 from utils.essentials.role_checks import *
 from utils.functions.pokemon_func import is_mon_in_game
 from utils.logs.pretty_log import pretty_log
-from utils.parsers.duration import parse_total_duration
+from utils.parsers.duration import parse_lottery_duration
 from utils.visuals.get_pokemon_gif import get_pokemon_gif_from_cache
 from utils.visuals.pretty_defer import pretty_defer
 
@@ -107,13 +107,14 @@ async def pokemon_lottery_func(
     # Parse duration if provided
     ends_on = 0
     if duration:
-        ends_on = parse_total_duration(duration)
+        ends_on, error_msg = parse_lottery_duration(duration)
         if ends_on is None:
-            await loader.error(content=f"'{duration}' is not a valid duration format.")
+            await loader.error(content=error_msg)
             return
         if ends_on <= 0:
             await loader.error(content="Duration must be greater than zero.")
             return
+        
 
     # Parse max tickets if provided
     max_tickets_int = 0
@@ -175,12 +176,17 @@ async def pokemon_lottery_func(
     try:
         sent_message = await channel.send(content=mention, embed=embed)
         thread = await sent_message.create_thread(
-            name=f"Lottery ID: {lottery_id} - {pokemon_name}"
+            name=f"🎟️ | Lottery ID: {lottery_id} - {pokemon_name}"
         )
         await update_message_and_thread(bot, lottery_id, sent_message.id, thread.id)
         await loader.success(
             content=f"Lottery created successfully in {channel.mention}!"
         )
+        # Edit embed to add lottery id in footer
+        embed.set_footer(
+            text=f"Lottery ID: {lottery_id}", icon_url=guild.icon.url if guild.icon else None
+        )
+        await sent_message.edit(embed=embed)
     except Exception as e:
         pretty_log(tag="error", message=f"Error sending lottery message: {e}")
         await loader.error(
