@@ -65,6 +65,7 @@ async def dex_listener(bot, message: discord.Message):
         )
     old_dex_number = fetch_dex_number_cache(pokemon_name)
     if dex_number and str(old_dex_number) != str(dex_number):
+        dex_number = int(dex_number)
         await update_dex_number(bot, pokemon_name, dex_number)
         debug_log(
             f"Updated dex number for {pokemon_name} to {dex_number} based on mh lookup command output."

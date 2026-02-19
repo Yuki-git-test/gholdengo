@@ -296,6 +296,7 @@ async def update_dex_number(bot, pokemon_name: str, dex_number: int):
     Update the dex number for a Pokémon in the market value table.
     """
     pokemon_name = pokemon_name.lower()
+    
     try:
         async with bot.pg_pool.acquire() as conn:
             # Only update if row exists
