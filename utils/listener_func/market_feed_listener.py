@@ -480,7 +480,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             # Only update DB if any value has changed
             cache_update = {
                 "pokemon": poke_name,
-                "dex": poke_dex,
+                "dex_number": poke_dex,
                 "is_exclusive": is_exclusive,
                 "lowest_market": lowest_market,
                 "current_listing": listed_price,
@@ -494,7 +494,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 or prev.get("current_listing") != listed_price
                 or prev.get("true_lowest") != true_lowest
                 or prev.get("listing_seen") != listing_seen
-                or prev.get("dex") != poke_dex
+                or prev.get("dex_number") != poke_dex
                 or prev.get("is_exclusive") != is_exclusive
                 or prev.get("image_link") != thumbnail_url
             )

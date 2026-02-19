@@ -9,6 +9,15 @@ import discord
 from utils.cache.cache_list import market_value_cache
 from utils.logs.pretty_log import pretty_log
 
+def fetch_dex_number_cache(pokemon_name: str):
+    """
+    Get dex number for a Pokémon from cache.
+    Returns 0 if not found or no data.
+    """
+    pokemon_data = market_value_cache.get(pokemon_name.lower())
+    if pokemon_data:
+        return pokemon_data.get("dex_number", 0)
+    return 0
 
 def fetch_market_value_cache(pokemon_name: str):
     """
@@ -282,7 +291,47 @@ async def update_market_value_via_listener(
             bot=bot,
         )
 
+async def update_dex_number(bot, pokemon_name: str, dex_number: int):
+    """
+    Update the dex number for a Pokémon in the market value table.
+    """
+    pokemon_name = pokemon_name.lower()
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            # Only update if row exists
+            row = await conn.fetchrow(
+                "SELECT pokemon_name FROM market_value WHERE pokemon_name = $1",
+                pokemon_name,
+            )
+            if not row:
+                pretty_log(
+                    tag="db",
+                    message=f"No market value row found for {pokemon_name}, skipping dex number update.",
+                    bot=bot,
+                )
+                return
+            await conn.execute(
+                "UPDATE market_value SET dex_number = $1, last_updated = $2 WHERE pokemon_name = $3",
+                dex_number,
+                datetime.utcnow(),
+                pokemon_name,
+            )
+            # Update in cache as well
+            if pokemon_name in market_value_cache:
+                market_value_cache[pokemon_name]["dex_number"] = dex_number
 
+        pretty_log(
+            tag="db",
+            message=f"Updated dex number for {pokemon_name} to {dex_number}",
+            bot=bot,
+        )
+
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to update dex number for {pokemon_name}: {e}",
+            bot=bot,
+        )
 async def upsert_image_link(
     bot, pokemon_name: str, image_link: str, is_exclusive: bool = None
 ):
@@ -659,7 +708,7 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                         last_updated = $8
                     """,
                     pokemon_name.lower(),
-                    data.get("dex", 0),
+                    data.get("dex_number", 0),
                     data.get("is_exclusive", False),
                     data.get("lowest_market", 0),
                     data.get("current_listing", 0),
@@ -715,7 +764,7 @@ async def load_market_cache_from_db(bot) -> dict:
             for row in rows:
                 cache[row["pokemon_name"]] = {
                     "pokemon": row["pokemon_name"],
-                    "dex": row["dex_number"],
+                    "dex_number": row["dex_number"],
                     "is_exclusive": row.get("is_exclusive", False),
                     "lowest_market": row["lowest_market"],
                     "current_listing": row["current_listing"],

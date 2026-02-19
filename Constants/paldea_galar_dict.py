@@ -1403,10 +1403,19 @@ def get_dex_number_by_name(name: str) -> int | None:
     Example: get_dex_number_by_name("flutter-mane") -> 987
     Returns None if not found.
     """
-    # Only return if the name matches exactly (case-sensitive)
-    for dex_num, poke_name in dex.items():
+    from utils.db.market_value_db import fetch_dex_number_cache
+    from utils.functions.pokemon_func import format_names_for_market_value_lookup
+
+    for num, poke_name in dex.items():
         if poke_name == name:
-            return dex_num
+            return num
+
+    # Fallback: try formatted name
+    formatted_name = format_names_for_market_value_lookup(name)
+    dex_number = fetch_dex_number_cache(formatted_name)
+    if dex_number is not None:
+        return dex_number
+
     return None
 
 

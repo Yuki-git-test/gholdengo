@@ -35,7 +35,7 @@ def get_embed_color_by_rarity(pokemon_name: str) -> int:
         return rarity_meta[rarity]["color"]
     else:
         return 0xFFFFFF  # Default to white if rarity is unknown
-    
+
 def format_price_w_coin(n: int) -> str:
     """Format PokeCoin price with commas (no K/M shorthand)."""
     pokecoin = VN_ALLSTARS_EMOJIS.vna_pokecoin

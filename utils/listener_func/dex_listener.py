@@ -11,6 +11,8 @@ from utils.db.market_value_db import (
     fetch_pokemon_exclusivity_cache,
     update_is_exclusive,
     upsert_image_link,
+    update_dex_number,
+    fetch_dex_number_cache
 )
 from utils.functions.pokemon_func import is_mon_exclusive
 from utils.logs.debug_log import debug_log, enable_debug
@@ -60,4 +62,14 @@ async def dex_listener(bot, message: discord.Message):
         pretty_log(
             "info",
             f"Updated image link for {pokemon_name} to {embed_image_url} based on mh lookup command output.",
+        )
+    old_dex_number = fetch_dex_number_cache(pokemon_name)
+    if dex_number and str(old_dex_number) != str(dex_number):
+        await update_dex_number(bot, pokemon_name, dex_number)
+        debug_log(
+            f"Updated dex number for {pokemon_name} to {dex_number} based on mh lookup command output."
+        )
+        pretty_log(
+            "info",
+            f"Updated dex number for {pokemon_name} to {dex_number} based on mh lookup command output.",
         )
