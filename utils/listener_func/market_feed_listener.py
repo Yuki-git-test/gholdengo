@@ -441,6 +441,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             # 💎────────────────────────────────────────────
             # Update market value cache with new listing data
             # Extract additional market data
+            poke_dex = int(poke_dex)
             lowest_market_str = re.sub(
                 r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
             )
