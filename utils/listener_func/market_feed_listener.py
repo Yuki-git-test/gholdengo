@@ -57,6 +57,32 @@ SNIPE_MAP = {
 SNIPE_CHANNEL_ID = VN_ALLSTARS_TEXT_CHANNELS.snipe_channel
 
 
+def determine_rarity_from_name_and_author_icon(
+    poke_name: str, author_icon_url: str, embed_color: int
+) -> str:
+    rarity = get_rarity_by_color(embed_color)
+    if rarity == "golden":
+        if "mega " in poke_name.lower():
+            rarity = "golden mega"
+    if rarity == "unknown":
+        if "shiny mega " in poke_name.lower():
+            rarity = "shiny mega"
+        elif (
+            "shiny gigantamax-" in poke_name.lower()
+            or "shiny eternamax-" in poke_name.lower()
+        ):
+            rarity = "shiny gigantamax"
+        elif "shiny" in poke_name.lower():
+            rarity = "shiny"
+        elif "mega" in poke_name.lower():
+            rarity = "mega"
+        elif "gigantamax-" in poke_name.lower() or "eternamax-" in poke_name.lower():
+            rarity = "gigantamax"
+        elif author_icon_url == Legendary_icon_url:
+            rarity = "legendary"
+    return rarity
+
+
 # 🟣────────────────────────────────────────────
 #           👂 Market Snipe Handler
 # 🟣────────────────────────────────────────────
@@ -337,6 +363,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             is_exclusive = True if embed_color == 0xEA260B else False
             display_pokemon_name = poke_name.title()
             thumbnail_url = embed.thumbnail.url if embed.thumbnail else None
+            author_icon_url = embed.author.icon_url if embed.author else None
 
             if original_id in processed_market_feed_ids:
                 debug_log(f"Market Feed ID {original_id} already processed")
@@ -441,6 +468,9 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             # 💎────────────────────────────────────────────
             # Update market value cache with new listing data
             # Extract additional market data
+            market_value_rarity = determine_rarity_from_name_and_author_icon(
+                poke_name, author_icon_url, embed_color
+            )
             poke_dex = int(poke_dex)
             lowest_market_str = re.sub(
                 r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
@@ -488,6 +518,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 "true_lowest": true_lowest,
                 "listing_seen": listing_seen,
                 "image_link": thumbnail_url,
+                "rarity": market_value_rarity,
             }
             prev = market_value_cache.get(cache_key, {})
             needs_update = (
@@ -498,6 +529,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 or prev.get("dex_number") != poke_dex
                 or prev.get("is_exclusive") != is_exclusive
                 or prev.get("image_link") != thumbnail_url
+                or prev.get("rarity") != market_value_rarity
             )
             market_value_cache[cache_key] = cache_update
             if needs_update:
@@ -511,10 +543,11 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     true_lowest=true_lowest,
                     listing_seen=listing_seen,
                     image_link=thumbnail_url,
+                    rarity=market_value_rarity,
                 )
                 pretty_log(
                     "debug",
-                    f"Updated market cache & DB for {poke_name}: embed_lowest={lowest_market:,}, current={listed_price:,}, true_lowest={true_lowest:,}, seen={listing_seen}",
+                    f"Updated market value cache and DB for {poke_name}: {cache_update}",
                 )
 
         except Exception as e:

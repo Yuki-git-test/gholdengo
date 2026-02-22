@@ -1,4 +1,5 @@
 from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS
+from Constants.grand_line_auction_constants import GRAND_LINE_AUCTION_EMOJIS
 
 Legendary_icon_url = (
     "https://cdn.discordapp.com/emojis/834534206007803984.webp?size=96&quality=lossless"
@@ -37,6 +38,11 @@ rarity_meta = {
         "emoji": "❓",
     },
     "event_exclusive": {"color": 15345163},
+    "mega": {"emoji": VN_ALLSTARS_EMOJIS.mega},
+    "shiny mega": {"emoji": VN_ALLSTARS_EMOJIS.vna_smega},
+    #"golden mega": {"emoji": VN_ALLSTARS_EMOJIS.vna_gm},
+    "gigantamax": {"emoji": VN_ALLSTARS_EMOJIS.vna_gmax},
+    "shiny gigantamax": {"emoji": VN_ALLSTARS_EMOJIS.vna_shinygmax},
 }
 common_icon_url = (
     "https://cdn.discordapp.com/emojis/834533715295600690.webp?size=96&quality=lossless"
