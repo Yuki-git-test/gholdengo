@@ -53,11 +53,11 @@ async def create_ga_prefix(bot, message: discord.Message):
         await message.reply(content)
         return
 
-    question_one = "What type of giveawy do you want to create? Please respond with either `clan` or `general`."
+    question_one = "What type of giveaway do you want to create? Please respond with either `clan` or `general`."
     cancel_str = "To cancel the giveaway creation process, type 'cancel' at any time."
     description = f"{question_one}\n\n{cancel_str}"
     embed = discord.Embed(
-        title="Giveaway Creation",
+        title="Enter Giveaway Type",
         description=description,
         color=DEFAULT_EMBED_COLOR,
     )
@@ -86,6 +86,7 @@ async def create_ga_prefix(bot, message: discord.Message):
         description = f"{duration_question}\n\nType `cancel` to stop this process."
         duration_question_embed = embed.copy()
         duration_question_embed.description = description
+        duration_question_embed.title = "Enter Giveaway Duration"
         await message.reply(embed=duration_question_embed)
         duration_response = await bot.wait_for("message", check=check, timeout=120)
         if duration_response.content.lower() == "cancel":
@@ -113,6 +114,7 @@ async def create_ga_prefix(bot, message: discord.Message):
         description = f"{winners_question}\n\nType `cancel` to stop this process."
         winners_question_embed = embed.copy()
         winners_question_embed.description = description
+        winners_question_embed.title = "Enter Number of Winners"
         await message.reply(embed=winners_question_embed)
         winners_response = await bot.wait_for("message", check=check, timeout=120)
         if winners_response.content.lower() == "cancel":
@@ -135,6 +137,7 @@ async def create_ga_prefix(bot, message: discord.Message):
         description = f"{prize_question}\n\nType `cancel` to stop this process."
         prize_question_embed = embed.copy()
         prize_question_embed.description = description
+        prize_question_embed.title = "Enter Giveaway Prize"
         await message.reply(embed=prize_question_embed)
         prize_response = await bot.wait_for("message", check=check, timeout=120)
         if prize_response.content.lower() == "cancel":
@@ -147,6 +150,7 @@ async def create_ga_prefix(bot, message: discord.Message):
         description = f"{special_msg_question}\n\nType `cancel` to stop this process."
         special_msg_question_embed = embed.copy()
         special_msg_question_embed.description = description
+        special_msg_question_embed.title = "Enter Giveaway Special Message"
         await message.reply(embed=special_msg_question_embed)
         special_msg_response = await bot.wait_for("message", check=check, timeout=120)
         if special_msg_response.content.lower() == "cancel":

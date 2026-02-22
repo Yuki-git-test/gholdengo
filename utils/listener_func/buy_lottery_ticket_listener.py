@@ -44,7 +44,7 @@ from utils.visuals.pretty_defer import pretty_defer
 from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
 
 
-async def create_and_send_winner_announcement(bot, lottery_info, winners):
+async def create_and_send_winner_announcement(bot, lottery_info, winners, context: str):
     channel_id = lottery_info["channel_id"]
     channel = bot.get_channel(channel_id)
     if not channel:
@@ -60,6 +60,8 @@ async def create_and_send_winner_announcement(bot, lottery_info, winners):
         announcement = f"{lottery_role_mention} has ended. No one bought tickets."
     else:
         announcement = f"{lottery_role_mention} has ended,🏆 Congratulations {winners}! You won the lottery!"
+    if context == "lottery_reroll":
+        announcement = f"{lottery_role_mention} has been rerolled,🏆 Congratulations {winners}! You won the lottery!"
     await channel.send(announcement)
 
 
@@ -247,7 +249,7 @@ async def calculate_number_of_tickets_and_update_entry(
     return total_tickets
 
 
-async def end_lottery(bot: commands.Bot, lottery_id: int):
+async def end_lottery(bot: commands.Bot, lottery_id: int, context: str = "lottery_end"):
     """Ends the lottery and picks a winner if there are any tickets sold."""
     if lottery_id in processing_end_lottery_ids:
         pretty_log(
@@ -319,7 +321,9 @@ async def end_lottery(bot: commands.Bot, lottery_id: int):
     if not entries:
         # Edit embed to show no winners and return
         winners = "Noone bought a ticket 😢"
-    winners = await pick_lottery_winners(bot, lottery_id, entries)
+    else:
+        winners = await pick_lottery_winners(bot, lottery_id, entries)
+
     updated_embed = update_lottery_embed_with_winners(lottery_embed, winners)
     try:
         await message.edit(embed=updated_embed)
@@ -331,7 +335,9 @@ async def end_lottery(bot: commands.Bot, lottery_id: int):
         processing_end_lottery_ids.remove(lottery_id)
     # Mark lottery as ended in db
     await mark_lottery_ended(bot, lottery_id)
-    await create_and_send_winner_announcement(bot, lottery_info, winners)
+    await create_and_send_winner_announcement(
+        bot, lottery_info, winners, context=context
+    )
 
     processing_end_lottery_ids.remove(lottery_id)
 

@@ -306,3 +306,23 @@ async def delete_lotteries_which_ended_a_week_ago(bot: discord.Client):
             )
     except Exception as e:
         pretty_log(message=f"Error deleting old lotteries: {e}", tag="error")
+
+
+async def is_lottery_active(bot: discord.Client, message_id: int) -> dict | bool:
+    """Return the table row as a dict if the lottery is active, otherwise return False."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            result = await conn.fetchrow(
+                """
+                SELECT *
+                FROM lottery
+                WHERE message_id = $1;
+                """,
+                message_id,
+            )
+            if result and not result["ended"]:
+                return dict(result)
+            return False
+    except Exception as e:
+        pretty_log(message=f"Error checking if lottery is active: {e}", tag="error")
+        return False

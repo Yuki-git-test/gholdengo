@@ -41,6 +41,7 @@ async def snipe_ga_func(
     bot: commands.Bot,
     interaction: discord.Interaction,
     prize: str,
+    giveaway_type: str,
     duration: int,
     winners: int = 1,
 ):
@@ -86,12 +87,14 @@ async def snipe_ga_func(
     ends_at = datetime.now() + timedelta(seconds=duration)
     content = f"SNIPE <@&{VN_ALLSTARS_ROLES.giveaways}>!"
     snipe_ga_embed = build_snipe_ga_embed(
+        giveaway_type=giveaway_type,
         host=interaction.user,
         prize=prize,
         ends_at=ends_at,
     )
     view = SnipeGAView(
         bot=bot,
+        giveaway_type=giveaway_type,
         prize=prize,
         author=interaction.user,
         embed_color=DEFAULT_EMBED_COLOR,

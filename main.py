@@ -24,6 +24,34 @@ bot = commands.Bot(command_prefix=";", intents=intents)
 set_ghouldengo_bot(bot)
 
 
+# ❀───────────────────────────────❀
+#   💖  App Command Error Handler 💖
+# ❀───────────────────────────────❀
+@bot.tree.error
+async def on_app_command_error(interaction, error):
+    from utils.essentials.role_checks import (
+        AuctioneerCheckFailure,
+        VNAStaffCheckFailure,
+    )
+
+    if isinstance(error, AuctioneerCheckFailure):
+        await interaction.response.send_message(str(error), ephemeral=True)
+    elif isinstance(error, VNAStaffCheckFailure):
+        await interaction.response.send_message(str(error), ephemeral=True)
+
+    elif isinstance(error, app_commands.CheckFailure):
+        await interaction.response.send_message(
+            "You don't have permission to use this command.", ephemeral=True
+        )
+    else:
+        await interaction.response.send_message("An error occurred.", ephemeral=True)
+    pretty_log(
+        tag="info",
+        message=f"App command error: {error}",
+        include_trace=True,
+    )
+
+
 # 🟣────────────────────────────────────────────
 #         ⚡ Hourly Cache Refresh Task ⚡
 # 🟣────────────────────────────────────────────
@@ -37,16 +65,34 @@ async def refresh_all_caches():
     clear_processed_messages_cache()
 
 
+# ❀───────────────────────────────❀
+#   💖  Prefix Command Error Handler 💖
+# ❀───────────────────────────────❀
+@bot.event
+async def on_command_error(ctx, error):
+    # Ignore prefix command not found
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+    # Handle other prefix errors
+    await ctx.send("❌ Something went wrong.")
+    pretty_log(
+        tag="error",
+        message=f"Prefix command error: {error}",
+        include_trace=True,
+    )
+
+
 # 🟣────────────────────────────────────────────
 #         ⚡ Startup Checklist ⚡
 # 🟣────────────────────────────────────────────
 async def startup_checklist(bot: commands.Bot):
     from utils.cache.cache_list import (
+        active_lottery_thread_ids,
         market_alert_cache,
         market_value_cache,
         vna_members_cache,
         webhook_url_cache,
-        active_lottery_thread_ids
     )
 
     total_market_values = len(market_value_cache)

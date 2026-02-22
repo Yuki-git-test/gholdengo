@@ -78,6 +78,7 @@ class Giveaway_Group_Command(commands.Cog):
     @app_commands.describe(
         prize="Prize for the giveaway",
         duration="Duration of the giveaway in seconds",
+        giveaway_type="The type of giveaway (general or clan)",
         winners="Number of winners (default is 1)",
     )
     async def giveaway_snipe(
@@ -85,7 +86,9 @@ class Giveaway_Group_Command(commands.Cog):
         interaction: discord.Interaction,
         prize: str,
         duration: int,
+        giveaway_type: Literal["general", "clan"],
         winners: int = 1,
+
     ):
         slash_cmd_name = "giveaway snipe"
         await run_command_safe(
@@ -95,6 +98,7 @@ class Giveaway_Group_Command(commands.Cog):
             slash_cmd_name=slash_cmd_name,
             prize=prize,
             duration=duration,
+            giveaway_type=giveaway_type,
             winners=winners,
         )
 
