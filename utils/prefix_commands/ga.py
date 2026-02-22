@@ -156,12 +156,11 @@ async def create_ga_prefix(bot, message: discord.Message):
         if special_msg_response.content.lower() == "cancel":
             await message.channel.send("Giveaway creation cancelled.")
             return
-        if (
-            special_msg_response.content.lower() == "no"
-            or special_msg_response.content.strip() == ""
-            or special_msg_response.content.lower() == "none"
-        ):
+        normalized = special_msg_response.content.lower().strip()
+        if normalized in {"no", "none", ""}:
             special_msg = None
+        else:
+            special_msg = special_msg_response.content
 
         special_msg = special_msg_response.content
 
@@ -199,7 +198,9 @@ async def create_ga_prefix(bot, message: discord.Message):
             return
 
         # Final confirmation embed
-        giveaway_type_display = "Clan Giveaway" if giveaway_type == "clan" else "General Giveaway"
+        giveaway_type_display = (
+            "Clan Giveaway" if giveaway_type == "clan" else "General Giveaway"
+        )
         confirm_embed = discord.Embed(
             title=f"{giveaway_type_display} Created!",
             description=(
