@@ -162,7 +162,7 @@ async def create_ga_prefix(bot, message: discord.Message):
         else:
             special_msg = special_msg_response.content
 
-        special_msg = special_msg_response.content
+        # ...existing code...
 
         if giveaway_type == "clan":
             channel_id = VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway
