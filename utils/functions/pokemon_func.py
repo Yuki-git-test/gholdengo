@@ -42,11 +42,37 @@ def format_price_w_coin(n: int) -> str:
     return f"{pokecoin} {n:,}"
 
 
+def strip_prefixes(pokemon_name: str):
+    """
+    Strip form prefixes from a Pokémon name to get the base name for market value lookup.
+    Handles prefixes like "Shiny", "Mega", "Gigantamax", "Shiny Mega", etc.
+    """
+    prefixes = [
+        "shiny mega",
+        "shiny gigantamax",
+        "golden mega",
+        "gigantamax",
+        "mega",
+        "shiny",
+        "golden",
+    ]
+    pokemon_name_lower = pokemon_name.lower()
+    for prefix in prefixes:
+        for sep in [" ", "-"]:
+            if pokemon_name_lower.startswith(prefix + sep):
+                return pokemon_name[len(prefix) + 1 :].strip()
+    return pokemon_name.strip().title()
+
+
 def get_display_name(pokemon_name: str, dex: bool = False) -> str:
     """Returns the display name of a Pokémon, optionally including the dex number."""
 
     rarity = get_rarity(pokemon_name)
     rarity_emoji = rarity_meta.get(rarity, {}).get("emoji", "") if rarity else ""
+
+    # Strip prefixes for display name to avoid clutter (e.g., "Shiny", "Mega", etc.)
+    pokemon_name = strip_prefixes(pokemon_name)
+    
     display_name = f"{rarity_emoji} {pokemon_name}".strip()
 
     if dex:

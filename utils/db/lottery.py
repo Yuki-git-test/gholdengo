@@ -54,13 +54,14 @@ async def upsert_lottery(
     channel_id: int,
     image_link: str,
     total_tickets: int,
+    lottery_type: str,
 ) -> int | None:
     try:
         async with bot.pg_pool.acquire() as conn:
             result = await conn.fetchrow(
                 """
-                INSERT INTO lottery (prize, host_id, host_name, max_tickets, ticket_price, base_pot, ends_on, ended, message_id, thread_id, channel_id, image_link, total_tickets)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                INSERT INTO lottery (prize, host_id, host_name, max_tickets, ticket_price, base_pot, ends_on, ended, message_id, thread_id, channel_id, image_link, total_tickets, lottery_type)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING lottery_id;
                 """,
                 prize,
@@ -76,6 +77,7 @@ async def upsert_lottery(
                 channel_id,
                 image_link,
                 total_tickets,
+                lottery_type,
             )
             return result["lottery_id"] if result else None
     except Exception as e:
@@ -183,7 +185,7 @@ async def add_to_total_tickets(
 async def get_lottery_info_by_thread_id(
     bot: discord.Client, thread_id: int
 ) -> dict | None:
-    """Fetch the lottery info associated with a given thread ID."""
+    """Fetch the lottery info associated with a given thread ID, including lottery_type."""
     try:
         async with bot.pg_pool.acquire() as conn:
             result = await conn.fetchrow(
@@ -203,7 +205,7 @@ async def get_lottery_info_by_thread_id(
 
 
 async def fetch_active_lotteries(bot: discord.Client) -> list[dict]:
-    """Fetch all active (not ended) lotteries from the database."""
+    """Fetch all active (not ended) lotteries from the database, including lottery_type."""
     try:
         async with bot.pg_pool.acquire() as conn:
             results = await conn.fetch(
@@ -220,7 +222,7 @@ async def fetch_active_lotteries(bot: discord.Client) -> list[dict]:
 
 
 async def fetch_all_due_lotteries(bot: discord.Client):
-    """Fetch all lotteries that have ended but are not marked as ended in the database."""
+    """Fetch all lotteries that have ended but are not marked as ended in the database, including lottery_type."""
     try:
         async with bot.pg_pool.acquire() as conn:
             results = await conn.fetch(
@@ -275,7 +277,7 @@ async def load_active_lotteries_into_cache(bot: discord.Client):
 async def fetch_lottery_info_by_lottery_id(
     bot: discord.Client, lottery_id: int
 ) -> dict | None:
-    """Fetch the lottery info associated with a given lottery ID."""
+    """Fetch the lottery info associated with a given lottery ID, including lottery_type."""
     try:
         async with bot.pg_pool.acquire() as conn:
             result = await conn.fetchrow(
@@ -309,7 +311,7 @@ async def delete_lotteries_which_ended_a_week_ago(bot: discord.Client):
 
 
 async def is_lottery_active(bot: discord.Client, message_id: int) -> dict | bool:
-    """Return the table row as a dict if the lottery is active, otherwise return False."""
+    """Return the table row as a dict if the lottery is active, including lottery_type, otherwise return False."""
     try:
         async with bot.pg_pool.acquire() as conn:
             result = await conn.fetchrow(

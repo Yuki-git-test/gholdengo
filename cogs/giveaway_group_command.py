@@ -8,6 +8,7 @@ from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.essentials.command_safe import run_command_safe
 from utils.group_command_func.giveaway import *
 from utils.logs.pretty_log import pretty_log
+from utils.db.ga_db import ended_giveaways_autocomplete, active_giveaways_autocomplete
 
 
 # 🍭──────────────────────────────
@@ -111,6 +112,7 @@ class Giveaway_Group_Command(commands.Cog):
         name="end",
         description="End an active giveaway.",
     )
+    @app_commands.autocomplete(message_id=active_giveaways_autocomplete)
     @app_commands.describe(
         message_id="The ID of the giveaway message to end.",
     )
@@ -137,6 +139,7 @@ class Giveaway_Group_Command(commands.Cog):
         name="cancel",
         description="Cancel an active giveaway.",
     )
+    @app_commands.autocomplete(message_id=active_giveaways_autocomplete)
     @app_commands.describe(
         message_id="The ID of the giveaway message to cancel.",
     )
@@ -163,6 +166,7 @@ class Giveaway_Group_Command(commands.Cog):
         name="reroll",
         description="Reroll a giveaway to select new winners.",
     )
+    @app_commands.autocomplete(message_id=ended_giveaways_autocomplete)
     @app_commands.describe(
         message_id="The ID of the giveaway message to reroll.",
         reroll_count="The number of times to reroll (default is 1).",

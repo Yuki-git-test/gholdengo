@@ -114,7 +114,7 @@ async def pokemon_lottery_func(
         if ends_on <= 0:
             await loader.error(content="Duration must be greater than zero.")
             return
-        
+
 
     # Parse max tickets if provided
     max_tickets_int = 0
@@ -164,6 +164,7 @@ async def pokemon_lottery_func(
             image_link=gif_url,
             total_tickets=0,
             channel_id=channel.id,
+            lottery_type="pokemon",
         )
     except Exception as e:
         pretty_log(tag="error", message=f"Error upserting lottery: {e}")

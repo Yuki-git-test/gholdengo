@@ -439,6 +439,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
     # Edit lottery message embed to show new ticket buyer and updated pot amount
     channel_id = lottery_info["channel_id"]
     message_id = lottery_info["message_id"]
+    lottery_type = lottery_info["lottery_type"]
     channel = bot.get_channel(channel_id)
     if not channel:
         pretty_log(
@@ -471,14 +472,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         )
         return
 
-    # Determine lottery type based on embed description
-    embed_description = lottery_embed.description
-    if "Pokemon Lottery" in embed_description:
-        lottery_type = "pokemon"
-    elif "Coin Lottery" in embed_description:
-        lottery_type = "coin"
-    else:
-        lottery_type = "unknown"
+
     # Create tracker embed for the user
     tracker_embed = await create_lottery_tracker_embed(
         bot,

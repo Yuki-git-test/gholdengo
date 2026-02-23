@@ -1,5 +1,9 @@
-import discord
+import re
 
+import discord
+from discord import app_commands
+
+from Constants.vn_allstars_constants import VN_ALLSTARS_TEXT_CHANNELS
 from utils.logs.pretty_log import pretty_log
 
 # SQL SCRIPT
@@ -18,6 +22,122 @@ from utils.logs.pretty_log import pretty_log
     thread_id BIGINT,
     PRIMARY KEY (giveaway_id, message_id)
 );"""
+
+
+def determine_giveaway_type_via_channel_id(channel_id: int) -> str:
+    """Determine giveaway type based on channel ID."""
+    if channel_id == VN_ALLSTARS_TEXT_CHANNELS.giveaway:
+        return "general"
+    elif channel_id == VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway:
+        return "clan"
+    elif channel_id == VN_ALLSTARS_TEXT_CHANNELS.server_booster:
+        return "server booster"
+    else:
+        return "general"  # Default to general if not in specific channels
+
+
+async def ended_giveaways_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    current_simple = re.sub(r"[^\w\s]", "", (current or "").lower()).replace(" ", "")
+    results: list[app_commands.Choice[str]] = []
+    seen = set()
+    ended_giveaways = await fetch_all_ended_giveaways(interaction.client)
+    for giveaway in ended_giveaways:
+        giveaway_prize_simple = re.sub(
+            r"[^\w\s]", "", giveaway["prize"].lower()
+        ).replace(" ", "")
+        if (
+            current_simple in giveaway_prize_simple
+            and giveaway["message_id"] not in seen
+        ):
+            givaway_host_name = giveaway["host_name"] or "Unknown Host"
+            giveaway_channel_id = giveaway["channel_id"]
+            giveaway_type = determine_giveaway_type_via_channel_id(giveaway_channel_id)
+            results.append(
+                app_commands.Choice(
+                    name=f"{giveaway['prize']} (Giveaway ID: {giveaway['giveaway_id']}) - {giveaway_type.title()} Giveaway by {givaway_host_name}",
+                    value=str(giveaway["message_id"]),
+                )
+            )
+            seen.add(giveaway["message_id"])
+        if len(results) >= 25:
+            break
+
+
+async def active_giveaways_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    current_simple = re.sub(r"[^\w\s]", "", (current or "").lower()).replace(" ", "")
+    results: list[app_commands.Choice[str]] = []
+    seen = set()
+    try:
+        active_giveaways = await fetch_all_giveaways(interaction.client)
+        if not active_giveaways:
+            results.append(app_commands.Choice(name="No active giveaways", value="0"))
+            return results
+
+        for giveaway in active_giveaways:
+            giveaway_prize_simple = re.sub(
+                r"[^\w\s]", "", giveaway["prize"].lower()
+            ).replace(" ", "")
+            if (
+                current_simple in giveaway_prize_simple
+                and giveaway["message_id"] not in seen
+            ):
+                givaway_host_name = giveaway["host_name"] or "Unknown Host"
+                giveaway_channel_id = giveaway["channel_id"]
+                giveaway_type = determine_giveaway_type_via_channel_id(
+                    giveaway_channel_id
+                )
+                results.append(
+                    app_commands.Choice(
+                        name=f"{giveaway['prize']} (Giveaway ID: {giveaway['giveaway_id']}) - {giveaway_type.title()} Giveaway by {givaway_host_name}",
+                        value=str(giveaway["message_id"]),
+                    )
+                )
+                seen.add(giveaway["message_id"])
+            if len(results) >= 25:
+                break
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching active giveaways for autocomplete: {e}",
+            label="Giveaway DB",
+            include_trace=True,
+        )
+        results.append(app_commands.Choice(name="Error fetching giveaways", value="0"))
+
+    return results
+
+
+async def fetch_all_ended_giveaways(bot: discord.Client):
+    """Fetch all giveaways with ended = true."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            records = await conn.fetch(
+                """
+                SELECT * FROM giveaways
+                WHERE ended = TRUE
+                """,
+            )
+            giveaways = [record for record in records]
+            pretty_log(
+                "info",
+                f"Fetched {len(giveaways)} ended giveaways",
+                label="Giveaway DB",
+            )
+            return giveaways
+    except Exception as e:
+        pretty_log(
+            "error",
+            f"Error fetching ended giveaways: {e}",
+            label="Giveaway DB",
+            include_trace=True,
+        )
+        return []
+
+
 async def fetch_all_giveaways(bot: discord.Client):
     """Fetch all giveaways with ended = false."""
     try:
@@ -43,6 +163,7 @@ async def fetch_all_giveaways(bot: discord.Client):
             include_trace=True,
         )
         return []
+
 
 async def upsert_giveaway(
     bot: discord.Client,
@@ -390,6 +511,7 @@ async def delete_giveaways_which_ended_a_week_ago(bot: discord.Client):
             include_trace=True,
         )
 
+
 async def fetch_all_giveaway_by_type(bot: discord.Client, giveaway_type: str):
     """Fetch all giveaways of a specific type and ended = false."""
     try:
@@ -415,4 +537,6 @@ async def fetch_all_giveaway_by_type(bot: discord.Client, giveaway_type: str):
             label="Giveaway DB",
             include_trace=True,
         )
+        return []
+        return []
         return []

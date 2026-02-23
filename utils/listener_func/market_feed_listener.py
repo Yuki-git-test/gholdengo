@@ -359,7 +359,9 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             debug_log(f"Parsed listing_seen: {listing_seen}, amount: {amount}")
 
             original_id = fields.get("ID", "0")
-            embed_color = embed.color.value if embed.color else 0x0855FB
+            embed_color = 0x0855FB
+            if embed.color and hasattr(embed.color, "value"):
+                embed_color = embed.color.value
             is_exclusive = True if embed_color == 0xEA260B else False
             display_pokemon_name = poke_name.title()
             thumbnail_url = embed.thumbnail.url if embed.thumbnail else None

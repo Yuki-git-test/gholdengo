@@ -12,7 +12,7 @@ async def reroll_lottery_func(
     interaction: discord.Interaction,
     message_id: int,
 ):
-    """Ends the lottery with the given message_id."""
+    """Reroll the lottery with the given message_id."""
 
     # Defer
     loader = await pretty_defer(
@@ -28,12 +28,24 @@ async def reroll_lottery_func(
     lottery_id = lottery_info["lottery_id"]
 
     # Check if lottery still has entries for reroll
+    entries = await fetch_all_entries_for_a_lottery(bot, lottery_id)
+    if not entries:
+        pretty_log(
+            "error",
+            f"No entries found for lottery ID {lottery_id}",
+            label="Reroll Lottery Handler",
+        )
+        await loader.error(
+            content="No entries found for this lottery. Cannot reroll.",
+        )
+        return
+
     try:
         await end_lottery(bot, lottery_id)
         await loader.success(content="Lottery ended successfully!")
     except Exception as e:
         pretty_log(
             "error",
-            f"Error processing lottery end for message ID {message_id}: {e}",
+            f"Error processing lottery reroll for message ID {message_id}: {e}",
         )
         await loader.error("An error occurred while ending the lottery.")

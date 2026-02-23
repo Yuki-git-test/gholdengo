@@ -396,12 +396,23 @@ async def reroll_giveaway_handler(
             label="Giveaway End Handler",
         )
         return False, f"Channel not found for giveaway."
+    giveaway_message = None
+    try:
+        giveaway_message = await channel.fetch_message(giveaway_row["message_id"])
+    except discord.NotFound:
+        pretty_log(
+            "error",
+            f"Message with ID {giveaway_row['message_id']} not found in channel {channel_id} for giveaway ID {giveaway_id}",
+            label="Giveaway End Handler",
+        )
+        return False, f"Giveaway message not found."
 
     # Pick winners
     winners = await pick_winners(bot, giveaway_id, entries, reroll_count)
 
     # Finalize giveaway
     await send_rerolled_results(
+        message=giveaway_message,
         channel=channel,
         giveaway_id=giveaway_id,
         host_id=host_id,
