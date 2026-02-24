@@ -8,7 +8,7 @@ from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.essentials.command_safe import run_command_safe
 from utils.group_command_func.donation import *
 from utils.logs.pretty_log import pretty_log
-
+from utils.essentials.role_checks import *
 
 # 🍭──────────────────────────────
 #   🎀 Donation Group Command
@@ -107,6 +107,7 @@ class Donation_Group_Command(commands.Cog):
         total_donations="The new total donations amount for the member.",
         monthly_donations="The new monthly donations amount for the member.",
     )
+    @vna_staff()
     async def donation_update(
         self,
         interaction: discord.Interaction,

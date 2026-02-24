@@ -121,7 +121,17 @@ async def finalize_giveaway(
             "\n".join(w["mention"] for w in winners) if winners else "No one entered 😢"
         )
     )
-    embed.add_field(name="🎁 Winners", value=winners_value, inline=False)
+    # Overwrite the existing '🎁 Winners' field if it exists, otherwise add a new one
+    winners_field_found = False
+    for idx, field in enumerate(embed.fields):
+        if field.name == "🎁 Winners":
+            embed.set_field_at(
+                idx, name="🎁 Winners", value=winners_value, inline=False
+            )
+            winners_field_found = True
+            break
+    if not winners_field_found:
+        embed.add_field(name="🎁 Winners", value=winners_value, inline=False)
     await message.edit(embed=embed)
 
     # ✅ Build announcement embed
@@ -174,7 +184,10 @@ async def finalize_giveaway(
     # ✅ Archive/lock thread
     if thread_id is not None:
         ga_thread = message.channel.get_thread(thread_id)
-        if ga_thread:
+        if ga_thread and (
+            not getattr(ga_thread, "locked", False)
+            or not getattr(ga_thread, "archived", False)
+        ):
             ga_thread_name = f"🔒 ID # {giveaway_id} | GA"
             if host:
                 ga_thread_name = f"🔒 ID # {giveaway_id} | {host.name} GA"

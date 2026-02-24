@@ -162,6 +162,38 @@ async def create_ga_prefix(bot, message: discord.Message):
         else:
             special_msg = special_msg_response.content
 
+        # Ask for optional image
+        giveaway_image_question = f"Is there any image you want to put inside the giveaway message? If not, type `no`."
+        description = (
+            f"{giveaway_image_question}\n\nType `cancel` to stop this process."
+        )
+        giveaway_image_question_embed = embed.copy()
+        giveaway_image_question_embed.description = description
+        giveaway_image_question_embed.title = (
+            "Enter Giveaway Image (Only One Image Allowed)"
+        )
+        await message.reply(embed=giveaway_image_question_embed)
+        giveaway_image_response = await bot.wait_for(
+            "message", check=check, timeout=120
+        )
+        if giveaway_image_response.content.lower() == "cancel":
+            await message.channel.send("Giveaway creation cancelled.")
+            return
+        normalized = giveaway_image_response.content.lower().strip()
+        if normalized in {"no", "none", ""}:
+            giveaway_image = None
+        elif giveaway_image_response.attachments:
+            giveaway_image = giveaway_image_response.attachments[0].url
+        else:
+            # Check if content is a valid URL
+            import re
+            url_pattern = re.compile(r"https?://(?:[\w.-]+)?(?:[\w\.-]+)\.[a-zA-Z]{2,}(?:/\S*)?")
+            if url_pattern.match(giveaway_image_response.content.strip()):
+                giveaway_image = giveaway_image_response.content.strip()
+            else:
+                await message.channel.send("Invalid image link provided. Please provide a valid image URL or attach an image. Giveaway creation cancelled.")
+                return
+
         # ...existing code...
 
         if giveaway_type == "clan":
@@ -214,6 +246,8 @@ async def create_ga_prefix(bot, message: discord.Message):
         confirm_embed.set_author(
             name=user.display_name, icon_url=user.display_avatar.url
         )
+        if giveaway_image:
+            confirm_embed.set_image(url=giveaway_image)
         await message.reply(embed=confirm_embed)
 
     except asyncio.TimeoutError:
@@ -229,6 +263,7 @@ async def ga_create_handler(
     prize: str,
     ends_at: int,
     special_msg: str | None,
+    giveaway_image: str | None = None,
 ):
     guild = channel.guild
     # Upsert giveaway to database and get giveaway ID
@@ -243,6 +278,7 @@ async def ga_create_handler(
             max_winners=winners,
             ends_at=ends_at,
             channel_id=channel.id,
+            image_link=giveaway_image,
         )
     except Exception as e:
         pretty_log("error", f"Error upserting giveaway to database: {e}")
@@ -257,6 +293,7 @@ async def ga_create_handler(
             ends_at=ends_at,
             winners=winners,
             message=special_msg,
+            image_link=giveaway_image,
         )
         view = GiveawayButtonsView(
             bot=bot,

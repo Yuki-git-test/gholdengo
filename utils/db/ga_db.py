@@ -63,6 +63,7 @@ async def ended_giveaways_autocomplete(
             seen.add(giveaway["message_id"])
         if len(results) >= 25:
             break
+    return results
 
 
 async def active_giveaways_autocomplete(

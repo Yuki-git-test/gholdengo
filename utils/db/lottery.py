@@ -1,6 +1,11 @@
-import discord
+import re
 
+import discord
+from discord import app_commands
+
+from Constants.vn_allstars_constants import VN_ALLSTARS_TEXT_CHANNELS
 from utils.cache.cache_list import active_lottery_thread_ids
+from utils.cache.global_variables import TESTING_LOTTERY
 from utils.logs.pretty_log import pretty_log
 
 # sql script
@@ -19,6 +24,136 @@ from utils.logs.pretty_log import pretty_log
     host_name VARCHAR(255),
     total_tickets bigint,
 );"""
+
+async def get_lottery_id_by_message_id(bot:discord.Client, message_id: int) -> int | None:
+    """Fetch the lottery ID associated with a given message ID."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            result = await conn.fetchrow(
+                """
+                SELECT lottery_id
+                FROM lottery
+                WHERE message_id = $1;
+                """,
+                message_id,
+            )
+            return result["lottery_id"] if result else None
+    except Exception as e:
+        pretty_log(message=f"Error fetching lottery ID by message ID: {e}", tag="error")
+        return None
+    
+async def fetch_all_ended_lotteries(bot: discord.Client) -> list[dict]:
+    """Fetch all ended lotteries from the database, including lottery_type."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            results = await conn.fetch(
+                """
+                SELECT *
+                FROM lottery
+                WHERE ended = TRUE;
+                """
+            )
+            return [dict(record) for record in results]
+    except Exception as e:
+        pretty_log(message=f"Error fetching ended lotteries: {e}", tag="error")
+        return []
+
+
+async def ended_lottery_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    current_simple = re.sub(r"[^\w\s]", "", (current or "").lower()).replace(" ", "")
+    results: list[app_commands.Choice[str]] = []
+    seen = set()
+    ended_lotteries = await fetch_all_ended_lotteries(interaction.client)
+    for lotto in ended_lotteries:
+        try:
+            lotto_prize_simple = re.sub(
+                r"[^\w\s]", "", str(lotto["prize"]).lower()
+            ).replace(" ", "")
+            match_result = not current_simple or current_simple in lotto_prize_simple
+            if match_result and lotto["message_id"] not in seen:
+                lottery_type = lotto["lottery_type"]
+                prize = lotto["prize"]
+                if lottery_type == "pokemon":
+                    prize_display = lotto["prize"]
+                else:
+                    prize_display = f"{prize} Coins"
+
+
+                name_str = f"Lottery ID: {lotto['lottery_id']} - Prize: {prize_display}"
+                results.append(
+                    app_commands.Choice(name=name_str, value=str(lotto["message_id"]))
+                )
+                seen.add(lotto["message_id"])
+            if len(results) >= 25:
+                break
+        except Exception as e:
+            pretty_log(message=f"DEBUG: Error in autocomplete loop: {e}", tag="debug")
+
+    if not results:
+        results.append(
+            app_commands.Choice(name="No active lotteries found", value="none")
+        )
+    return results
+
+
+async def active_lottery_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    current_simple = re.sub(r"[^\w\s]", "", (current or "").lower()).replace(" ", "")
+    results: list[app_commands.Choice[str]] = []
+    seen = set()
+    active_lotteries = await fetch_active_lotteries(interaction.client)
+
+    for lotto in active_lotteries:
+        try:
+            lotto_prize_simple = re.sub(
+                r"[^\w\s]", "", str(lotto["prize"]).lower()
+            ).replace(" ", "")
+            match_result = not current_simple or current_simple in lotto_prize_simple
+            if match_result and lotto["message_id"] not in seen:
+                lottery_type = lotto["lottery_type"]
+                prize = lotto["prize"]
+                if lottery_type == "pokemon":
+                    prize_display = lotto["prize"]
+                else:
+                    prize_display = f"{prize} Coins"
+
+                name_str = f"Lottery ID: {lotto['lottery_id']} - Prize: {prize_display}"
+                name_str = name_str[:100]
+                results.append(
+                    app_commands.Choice(name=name_str, value=str(lotto["message_id"]))
+                )
+                seen.add(lotto["message_id"])
+            if len(results) >= 25:
+                break
+        except Exception as e:
+            pretty_log(message=f"DEBUG: Error in autocomplete loop: {e}", tag="debug")
+
+    if not results:
+        results.append(
+            app_commands.Choice(name="No active lotteries found", value="none")
+        )
+
+    return results
+
+
+async def update_prize(bot: discord.Client, lottery_id: int, new_prize: str):
+    """Update the prize for a lottery."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE lottery
+                SET prize = $1
+                WHERE lottery_id = $2;
+                """,
+                new_prize,
+                lottery_id,
+            )
+    except Exception as e:
+        pretty_log(message=f"Error updating lottery prize: {e}", tag="error")
 
 
 async def get_total_tickets(bot: discord.Client, lottery_id: int) -> int:
@@ -52,9 +187,9 @@ async def upsert_lottery(
     message_id: int,
     thread_id: int,
     channel_id: int,
-    image_link: str,
     total_tickets: int,
     lottery_type: str,
+    image_link: str = None,
 ) -> int | None:
     try:
         async with bot.pg_pool.acquire() as conn:
@@ -325,6 +460,9 @@ async def is_lottery_active(bot: discord.Client, message_id: int) -> dict | bool
             if result and not result["ended"]:
                 return dict(result)
             return False
+    except Exception as e:
+        pretty_log(message=f"Error checking if lottery is active: {e}", tag="error")
+        return False
     except Exception as e:
         pretty_log(message=f"Error checking if lottery is active: {e}", tag="error")
         return False

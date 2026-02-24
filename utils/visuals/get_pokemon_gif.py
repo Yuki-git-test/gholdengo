@@ -17,10 +17,10 @@ hyphen_mon_names = [
 ]
 from utils.logs.debug_log import debug_log, enable_debug
 
-#enable_debug(f"{__name__}.get_pokemon_gif")
+# enable_debug(f"{__name__}.get_pokemon_gif")
 # sync
 
-def get_pokemon_gif_from_cache(pokemon_name: str):
+def get_pokemon_gif(pokemon_name: str):
     formatted_name = format_names_for_market_value_lookup(pokemon_name)
     image_url = fetch_image_link_cache(formatted_name)
     if not image_url:
@@ -31,7 +31,7 @@ def get_pokemon_gif_from_cache(pokemon_name: str):
             ),
         )
         # Fallback to fetching the GIF using the original name formatting
-        image_url = get_pokemon_gif(pokemon_name)
+        image_url = old_get_pokemon_gif(pokemon_name)
         if not image_url:
             pretty_log(
                 tag="info",
@@ -45,8 +45,7 @@ def get_pokemon_gif_from_cache(pokemon_name: str):
         return image_url
 
 
-
-def get_pokemon_gif(input_name: str):
+def old_get_pokemon_gif(input_name: str):
     """
     Returns the pokemon gif
     """

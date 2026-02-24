@@ -18,7 +18,7 @@ async def end_lottery_func(
         interaction=interaction, content="Ending the lottery...", ephemeral=False
     )
     # Check if lottery is active
-    lottery_info = is_lottery_active(bot, message_id)
+    lottery_info = await is_lottery_active(bot, message_id)
     if not lottery_info:
         await loader.error("This lottery has already ended or does not exist.")
         return

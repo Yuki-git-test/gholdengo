@@ -1,16 +1,17 @@
-from Constants.pokemon_dex import *
-from utils.db.market_value_db import (
-    fetch_market_value_cache,
-    is_pokemon_exclusive_cache,
-)
-from utils.logs.debug_log import debug_log, enable_debug
 from Constants.paldea_galar_dict import get_dex_number_by_name, rarity_meta
+from Constants.pokemon_dex import *
 from Constants.vn_allstars_constants import (
     KHY_USER_ID,
     VN_ALLSTARS_EMOJIS,
     VN_ALLSTARS_ROLES,
     YUKI_USER_ID,
 )
+from utils.db.market_value_db import (
+    fetch_market_value_cache,
+    is_pokemon_exclusive_cache,
+)
+from utils.logs.debug_log import debug_log, enable_debug
+from utils.logs.pretty_log import pretty_log
 
 IN_GAME_MONS_LIST = (
     list(common_mons.keys())
@@ -29,6 +30,7 @@ IN_GAME_MONS_LIST = (
 
 exclusive_mons_list = list(exclusive_mons.keys())
 
+
 def get_embed_color_by_rarity(pokemon_name: str) -> int:
     rarity = get_rarity(pokemon_name)
     if rarity and rarity in rarity_meta:
@@ -36,9 +38,11 @@ def get_embed_color_by_rarity(pokemon_name: str) -> int:
     else:
         return 0xFFFFFF  # Default to white if rarity is unknown
 
+
 def format_price_w_coin(n: int) -> str:
     """Format PokeCoin price with commas (no K/M shorthand)."""
     pokecoin = VN_ALLSTARS_EMOJIS.vna_pokecoin
+    n = int(n)  # Ensure n is an integer
     return f"{pokecoin} {n:,}"
 
 
@@ -72,7 +76,7 @@ def get_display_name(pokemon_name: str, dex: bool = False) -> str:
 
     # Strip prefixes for display name to avoid clutter (e.g., "Shiny", "Mega", etc.)
     pokemon_name = strip_prefixes(pokemon_name)
-    
+
     display_name = f"{rarity_emoji} {pokemon_name}".strip()
 
     if dex:
@@ -102,35 +106,53 @@ def is_mon_exclusive(pokemon: str) -> bool:
         return False
 
 
+enable_debug(f"{__name__}.get_rarity")
+
+
 def get_rarity(pokemon: str):
     """Determines the rarity of a given Pokemon based on the name"""
 
     name = pokemon.lower()
+    pretty_log("info", f"Determining rarity for: {pokemon}")
+    debug_log(f"Checking rarity for: {name}")
     if "golden" in name:
+        debug_log(f"Matched 'golden' in name: {name}")
         return "golden"
     elif "shiny" in name and "gigantamax" in name:
+        debug_log(f"Matched 'shiny' and 'gigantamax' in name: {name}")
         return "sgmax"
     elif "shiny" in name and "mega" in name:
+        debug_log(f"Matched 'shiny' and 'mega' in name: {name}")
         return "smega"
     elif "shiny" in name:
+        debug_log(f"Matched 'shiny' in name: {name}")
         return "shiny"
     elif "gigantamax" in name:
+        debug_log(f"Matched 'gigantamax' in name: {name}")
         return "gmax"
     elif "mega" in name and not "yanmega" in name and not "meganium" in name:
+        debug_log(f"Matched 'mega' in name (not yanmega/meganium): {name}")
         return "mega"
 
     # Fallback to the list (case-insensitive)
-    elif name in (mon.lower() for mon in legendary_mons):
+    debug_log(f"Checking fallback rarity lists for: {name}")
+    if name in (mon.lower() for mon in legendary_mons):
+        debug_log(f"Matched legendary_mons: {name}")
         return "legendary"
     elif name in (mon.lower() for mon in superrare_mons):
-        return "super rare"
+        debug_log(f"Matched superrare_mons: {name}")
+        return "superrare"
     elif name in (mon.lower() for mon in rare_mons):
+        debug_log(f"Matched rare_mons: {name}")
         return "rare"
     elif name in (mon.lower() for mon in uncommon_mons):
+        debug_log(f"Matched uncommon_mons: {name}")
         return "uncommon"
     elif name in (mon.lower() for mon in common_mons):
+        debug_log(f"Matched common_mons: {name}")
         return "common"
     else:
+        debug_log(f"No rarity matched for: {name}")
         return None
 
 

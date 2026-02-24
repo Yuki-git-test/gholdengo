@@ -21,6 +21,7 @@ from utils.db.lottery import (
     get_lottery_info_by_thread_id,
     get_total_tickets,
     mark_lottery_ended,
+    update_prize,
 )
 from utils.db.lottery_entries import (
     add_tickets_to_entry,
@@ -34,11 +35,14 @@ from utils.db.lottery_entries import (
 from utils.essentials.parsers import parse_compact_number
 from utils.essentials.role_checks import *
 from utils.functions.get_pokemeow_reply import get_pokemeow_reply_member
-from utils.functions.pokemon_func import is_mon_in_game
+from utils.functions.pokemon_func import (
+    format_price_w_coin,
+    get_display_name,
+    is_mon_in_game,
+)
 from utils.functions.webhook_func import send_webhook
 from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_total_duration
-from utils.visuals.get_pokemon_gif import get_pokemon_gif_from_cache
 from utils.visuals.pretty_defer import pretty_defer
 
 from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
@@ -46,6 +50,12 @@ from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
 
 async def create_and_send_winner_announcement(bot, lottery_info, winners, context: str):
     channel_id = lottery_info["channel_id"]
+    lottery_type = lottery_info["lottery_type"]
+    if lottery_type == "pokemon":
+        prize_display = get_display_name(lottery_info["prize"], dex=False)
+    elif lottery_type == "coin":
+        prize_display = format_price_w_coin(lottery_info["prize"])
+
     channel = bot.get_channel(channel_id)
     if not channel:
         pretty_log(
@@ -59,9 +69,9 @@ async def create_and_send_winner_announcement(bot, lottery_info, winners, contex
     if winners == "No winners":
         announcement = f"{lottery_role_mention} has ended. No one bought tickets."
     else:
-        announcement = f"{lottery_role_mention} has ended,🏆 Congratulations {winners}! You won the lottery!"
+        announcement = f"{lottery_role_mention} has ended,🏆 Congratulations {winners}! You won lottery of {prize_display}!"
     if context == "lottery_reroll":
-        announcement = f"{lottery_role_mention} has been rerolled,🏆 Congratulations {winners}! You won the lottery!"
+        announcement = f"{lottery_role_mention} has been rerolled,🏆 Congratulations {winners}! You won the lottery of {prize_display}!"
     await channel.send(announcement)
 
 
@@ -145,12 +155,18 @@ def update_lottery_embed_with_winners(embed: discord.Embed, winners):
     winner_added = False
 
     for line in desc_lines:
+        stripped = line.strip()
         # Replace the "Ends" line with "Ended"
-        if line.strip().startswith("⏰ **Ends:**"):
+        if stripped.startswith("⏰ **Ends:**"):
             new_desc_lines.append("⏰ **Ended**")
             # Insert the winner line right after
             new_desc_lines.append(winner_line)
             winner_added = True
+        # Remove any previous winner line (including reroll)
+        elif stripped.startswith("🏆 **Winner:**"):
+            # Skip old winner line
+            winner_added = True
+            continue
         else:
             new_desc_lines.append(line)
 
@@ -174,6 +190,26 @@ def update_tickets_sold(embed: discord.Embed, tickets: str):
             )
             break
     return embed
+
+
+def update_current_pot(
+    embed: discord.Embed, tickets: str, base_pot: int, ticket_price: int
+):
+    tickets = int(tickets.replace(",", ""))
+    new_pot = base_pot + ((tickets * ticket_price) * 0.75)
+    new_pot = int(round(new_pot))  # Ensure whole number, no decimal
+    # Format display with commas and coin emoji
+    display_pot = f"{format_price_w_coin(new_pot)}"
+    for field in embed.fields:
+        if field.name == "Current Pot":
+            embed.set_field_at(
+                embed.fields.index(field),
+                name="Current Pot",
+                value=display_pot,
+                inline=False,
+            )
+            break
+    return embed, new_pot
 
 
 async def pick_lottery_winners(
@@ -270,7 +306,7 @@ async def end_lottery(bot: commands.Bot, lottery_id: int, context: str = "lotter
     # Lock thread first
     thread_id = lottery_info["thread_id"]
     thread = bot.get_channel(thread_id)
-    if thread:
+    if thread and not getattr(thread, "locked", False):
         try:
             # Change thread name to use lock emoji
             old_name = thread.name
@@ -472,7 +508,6 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         )
         return
 
-
     # Create tracker embed for the user
     tracker_embed = await create_lottery_tracker_embed(
         bot,
@@ -499,6 +534,22 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "error",
             f"Could not add reaction to message {message.id} after lottery ticket purchase. Error: {e}",
         )
+    if lottery_type == "coin":
+        # Also update the current pot field in the embed
+        base_pot = lottery_info["base_pot"]
+        ticket_price = lottery_info["ticket_price"]
+        updated_embed, new_pot = update_current_pot(
+            updated_embed, str(new_tickets_sold), base_pot, ticket_price
+        )
+        try:
+            await lottery_message.edit(embed=updated_embed)
+            await update_prize(bot, lottery_id=lottery_id, new_prize=str(new_pot))
+        except Exception as e:
+            pretty_log(
+                "error",
+                f"Could not edit lottery message {message_id} to update current pot for lottery id {lottery_id} after ticket purchase. Message id: {message.id}. Error: {e}",
+            )
+            return
     # Check if max tickets has been reached and end lottery if so
     if max_tickets != 0 and new_tickets_sold >= max_tickets:
         pretty_log(

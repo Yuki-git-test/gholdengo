@@ -12,6 +12,24 @@ from utils.logs.pretty_log import pretty_log
     FOREIGN KEY (lottery_id) REFERENCES lottery(lottery_id) ON DELETE CASCADE
 );"""
 
+async def fetch_user_all_active_lottery_entries(bot: discord.Client, user_id: int) -> list[dict]:
+    """Fetch all lottery entries for a specific user across all active lotteries."""
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT le.lottery_id, le.user_name, le.entries
+                FROM lottery_entries le
+                JOIN lottery l ON le.lottery_id = l.lottery_id
+                WHERE le.user_id = $1 AND l.ended = FALSE;
+                """,
+                user_id,
+            )
+            return [dict(row) for row in rows]
+    except Exception as e:
+        pretty_log(message=f"Error fetching user's active lottery entries: {e}", tag="error")
+        return []
+    
 async def upsert_lottery_entry(
     bot: discord.Client,
     lottery_id: int,
@@ -102,7 +120,7 @@ async def add_tickets_to_entry(bot: discord.Client, lottery_id: int, user_id: in
             )
     except Exception as e:
         pretty_log(message=f"Error adding tickets to lottery entry: {e}", tag="error")
-        
+
 async def fetch_lottery_entry(bot: discord.Client, lottery_id: int, user_id: int) -> dict | None:
     """Fetch a specific lottery entry for a user."""
     try:

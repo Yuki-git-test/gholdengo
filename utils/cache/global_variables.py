@@ -4,4 +4,4 @@ bank_msg_count = []
 
 # Testing Variables
 TESTING_GA = False
-TESTING_LOTTERY = True
+TESTING_LOTTERY = False

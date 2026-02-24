@@ -17,42 +17,19 @@ from utils.essentials.role_checks import *
 from utils.functions.pokemon_func import is_mon_in_game
 from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_lottery_duration
-from utils.visuals.get_pokemon_gif import get_pokemon_gif
 from utils.visuals.pretty_defer import pretty_defer
 
-from .embed import create_pokemon_lottery_embed
+from .embed import create_coin_lottery_embed
+from .pokemon import if_testing_lottery, validate_ticket_price
+
+# ( {tickets x tickets price} x 75%)
 
 
-def if_testing_lottery(guild: discord.Guild):
-    """Returns the appropriate channel and mention string based on whether we're testing or not."""
-    test_channel_id = VN_ALLSTARS_TEXT_CHANNELS.khys_chamber
-    real_channel_id = VN_ALLSTARS_TEXT_CHANNELS.lottery
-    mention = f"<@&{VN_ALLSTARS_ROLES.lottery}>"
-    if TESTING_LOTTERY:
-        channel_id = test_channel_id
-        mention = ""
-    else:
-        channel_id = real_channel_id
-    channel = guild.get_channel(channel_id)
-    return channel, mention
-
-
-def validate_ticket_price(ticket_price: int):
-    """
-    Raises ValueError if ticket_price is not a 'nice' number.
-    Only allows multiples of 100.
-    """
-    if ticket_price <= 0:
-        raise ValueError("Ticket price must be positive.")
-    if ticket_price % 100 != 0:
-        raise ValueError("Ticket price should be a round number (multiple of 100).")
-
-
-async def pokemon_lottery_func(
+async def coin_lottery_func(
     bot: commands.Bot,
     interaction: discord.Interaction,
-    pokemon_name: str,
     cost_per_ticket: str,
+    base_pot: str = None,
     duration: str = None,
     max_tickets: str = None,
 ):
@@ -66,17 +43,11 @@ async def pokemon_lottery_func(
         await loader.edit(content="You don't have permission to use this command.")
         return
     host = interaction.user
+
     #  Either duration or max tickets must be provided
     if not duration and not max_tickets:
         await loader.error(
             content="You must provide either a duration or a max tickets limit."
-        )
-        return
-
-    # Check if valid mon
-    if not is_mon_in_game(pokemon_name):
-        await loader.error(
-            content=f"'{pokemon_name}' is not a valid Pokémon name or not in game yet."
         )
         return
 
@@ -90,6 +61,7 @@ async def pokemon_lottery_func(
     if parsed_cost <= 0:
         await loader.error(content="Cost per ticket must be greater than zero.")
         return
+
     # Validate ticket price
     try:
         validate_ticket_price(parsed_cost)
@@ -97,13 +69,18 @@ async def pokemon_lottery_func(
         await loader.error(content=str(e))
         return
 
-    # Get Pokémon GIF
-    gif_url = get_pokemon_gif(pokemon_name)
-    if not gif_url:
-        await loader.error(
-            content=f"Could not find a GIF for '{pokemon_name}'. Please check the name and try again or contact Khy."
-        )
-        return
+    # Parse base pot
+    parsed_base_pot = 0
+    if base_pot:
+        parsed_base_pot = parse_compact_number(base_pot)
+        if parsed_base_pot is None:
+            await loader.error(
+                content=f"'{base_pot}' is not a valid number for base pot."
+            )
+            return
+        if parsed_base_pot < 0:
+            await loader.error(content="Base pot cannot be negative.")
+            return
 
     # Parse duration if provided
     ends_on = 0
@@ -130,54 +107,52 @@ async def pokemon_lottery_func(
             return
 
     channel, mention = if_testing_lottery(guild)
+
     # Create embed
     try:
-        embed = create_pokemon_lottery_embed(
-            prize=pokemon_name,
+        embed, initial_prize = create_coin_lottery_embed(
             host=host,
+            base_pot=parsed_base_pot,
             max_tickets=max_tickets_int,
             ticket_price=parsed_cost,
             ends_on=ends_on,
-            image_link=gif_url,
         )
     except Exception as e:
-        pretty_log(tag="error", message=f"Error creating embed: {e}")
+        pretty_log("error", f"Error creating lottery embed: {e}")
         await loader.error(
-            content="An error occurred while creating the lottery embed. Please try again or contact Khy."
+            content="An error occurred while creating the lottery embed. Please try again or contact Khy.",
         )
-        return
 
     # Upsert lottery in DB
     try:
         lottery_id = await upsert_lottery(
             bot=bot,
-            prize=pokemon_name,
+            prize=str(initial_prize),
             host_id=host.id,
             host_name=host.name,
             max_tickets=max_tickets_int,
             ticket_price=parsed_cost,
-            base_pot=0,
+            base_pot=parsed_base_pot,
             ends_on=ends_on,
             ended=False,
             message_id=0,
             thread_id=0,
-            image_link=gif_url,
             total_tickets=0,
+            lottery_type="coin",
+            image_link=None,
             channel_id=channel.id,
-            lottery_type="pokemon",
         )
     except Exception as e:
-        pretty_log(tag="error", message=f"Error upserting lottery: {e}")
+        pretty_log("error", f"Error upserting lottery in DB: {e}")
         await loader.error(
-            content="An error occurred while setting up the lottery. Please try again or contact Khy."
+            content="An error occurred while saving the lottery to the database. Please try again or contact Khy.",
         )
         return
-
     # Send embed
     try:
         sent_message = await channel.send(content=mention, embed=embed)
         thread = await sent_message.create_thread(
-            name=f"🎟️ | Lottery ID: {lottery_id} - {pokemon_name}"
+            name=f"🎟️ | Lottery ID: {lottery_id} - Coin Lottery"
         )
         await update_message_and_thread(bot, lottery_id, sent_message.id, thread.id)
         await loader.success(

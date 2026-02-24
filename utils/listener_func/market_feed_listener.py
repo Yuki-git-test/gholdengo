@@ -30,7 +30,7 @@ from utils.logs.pretty_log import pretty_log
 
 # enable_debug(f"{__name__}.market_snipe_handler")
 # enable_debug(f"{__name__}.handle_market_alert")
-# enable_debug(f"{__name__}.market_feeds_listener")
+enable_debug(f"{__name__}.market_feeds_listener")
 # 🟣────────────────────────────────────────────
 #  ⚡ Market Snipe ⚡
 # 🟣────────────────────────────────────────────
@@ -98,7 +98,11 @@ async def market_snipe_handler(
     embed: discord.Embed,
 ):
     debug_log(f"Handling market snipe for {poke_name} with ID {id}")
-    embed_color = embed.color.value if embed.color else 0x0855FB
+    try:
+        embed_color = embed.color.value if embed.color else 0x0855FB
+    except Exception as e:
+        embed_color = 0x0855FB
+        debug_log(f"Error getting embed color: {e}", highlight=True)
     debug_log(f"Embed color: {embed_color}")
     rarity = get_rarity_by_color(embed_color)
     debug_log(f"Initial rarity: {rarity}")
@@ -359,9 +363,17 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             debug_log(f"Parsed listing_seen: {listing_seen}, amount: {amount}")
 
             original_id = fields.get("ID", "0")
-            embed_color = 0x0855FB
-            if embed.color and hasattr(embed.color, "value"):
-                embed_color = embed.color.value
+            # Robustly handle embed.color
+            embed_color = 0x000000
+            if hasattr(embed, "color") and embed.color:
+                if hasattr(embed.color, "value"):
+                    embed_color = embed.color.value
+                else:
+                    try:
+                        embed_color = int(embed.color)
+                    except Exception:
+                        embed_color = 0x000000
+            debug_log(f"Parsed embed_color: {embed_color}")
             is_exclusive = True if embed_color == 0xEA260B else False
             display_pokemon_name = poke_name.title()
             thumbnail_url = embed.thumbnail.url if embed.thumbnail else None
