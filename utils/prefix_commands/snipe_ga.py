@@ -45,6 +45,7 @@ async def create_snipe_ga_prefix(bot: discord.Client, message: discord.Message):
     try:
         await message.reply(embed=embed)
         giveaway_type = await bot.wait_for("message", check=check, timeout=120)
+        giveaway_type = giveaway_type.content.strip().lower()
         if giveaway_type not in ["clan", "general"]:
             await message.channel.send(
                 "Invalid giveaway type. Please respond with either `clan` or `general`. Snipe Giveaway creation cancelled."
