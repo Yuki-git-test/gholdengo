@@ -9,7 +9,11 @@ from discord.ext import commands, tasks
 
 import utils.cache.global_variables as globals
 from Constants.giveaway import REQUIRED_ROLES
-from Constants.vn_allstars_constants import DEFAULT_EMBED_COLOR, VN_ALLSTARS_ROLES, VN_ALLSTARS_TEXT_CHANNELS
+from Constants.vn_allstars_constants import (
+    DEFAULT_EMBED_COLOR,
+    VN_ALLSTARS_ROLES,
+    VN_ALLSTARS_TEXT_CHANNELS,
+)
 from utils.functions.snipe_ga_func import SnipeGAView, build_snipe_ga_embed
 from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_total_seconds
@@ -30,7 +34,9 @@ async def create_snipe_ga_prefix(bot: discord.Client, message: discord.Message):
         return
 
     question_one = "What type of giveaway do you want to create? Please respond with either `clan` or `general`."
-    cancel_str = "To cancel the snipe giveaway creation process, type 'cancel' at any time."
+    cancel_str = (
+        "To cancel the snipe giveaway creation process, type 'cancel' at any time."
+    )
     description = f"{question_one}\n\n{cancel_str}"
     embed = discord.Embed(
         title="Enter Snipe Giveaway Type",
@@ -44,25 +50,26 @@ async def create_snipe_ga_prefix(bot: discord.Client, message: discord.Message):
 
     try:
         await message.reply(embed=embed)
-        giveaway_type = await bot.wait_for("message", check=check, timeout=120)
-        giveaway_type = giveaway_type.content.strip().lower()
+        giveaway_type_msg = await bot.wait_for("message", check=check, timeout=120)
+        giveaway_type = giveaway_type_msg.content.strip().lower()
+        if giveaway_type == "cancel":
+            await message.channel.send("Snipe Giveaway creation cancelled.")
+            return
         if giveaway_type not in ["clan", "general"]:
             await message.channel.send(
                 "Invalid giveaway type. Please respond with either `clan` or `general`. Snipe Giveaway creation cancelled."
             )
             return
-        if giveaway_type.content.lower() == "cancel":
-            await message.channel.send("Snipe Giveaway creation cancelled.")
-            return
-        giveaway_type = giveaway_type.content.strip().lower()
         # Extract channel ID from mention or use as is
-        if giveaway_type  == "clan":
+        if giveaway_type == "clan":
             channel_id = VN_ALLSTARS_TEXT_CHANNELS.clan_giveaway
         else:
             channel_id = VN_ALLSTARS_TEXT_CHANNELS.giveaway
         giveaway_channel = bot.get_channel(channel_id)
         if giveaway_channel is None:
-            await message.channel.send("Invalid channel. Snipe Giveaway creation cancelled.")
+            await message.channel.send(
+                "Invalid channel. Snipe Giveaway creation cancelled."
+            )
             return
 
         # Ask for duration
@@ -169,5 +176,7 @@ async def create_snipe_ga_prefix(bot: discord.Client, message: discord.Message):
             view=view,
         )
         view.message = ga_msg
+    except asyncio.TimeoutError:
+        await message.channel.send("You took too long to reply. Giveaway cancelled.")
     except asyncio.TimeoutError:
         await message.channel.send("You took too long to reply. Giveaway cancelled.")
