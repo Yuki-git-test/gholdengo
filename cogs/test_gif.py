@@ -43,7 +43,8 @@ class TestGif(commands.Cog):
         if not gif_url:
             await loader.error(f"Could not find a gif for {pokemon_name}.")
             return
-        display_name = get_display_name(pokemon_name)
+        display_name = get_display_name(pokemon_name, dex=True)
+
         embed_color = get_embed_color_by_rarity(pokemon_name)
         embed = discord.Embed(title=display_name, color=embed_color)
         embed.set_image(url=gif_url)

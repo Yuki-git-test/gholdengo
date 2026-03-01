@@ -13,7 +13,7 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_TEXT_CHANNELS,
     YUKI_USER_ID,
 )
-from utils.cache.cache_list import processing_end_lottery_ids
+from utils.cache.cache_list import processing_end_lottery_ids, processing_lottery_purchase_ids
 from utils.cache.global_variables import TESTING_LOTTERY
 from utils.db.lottery import (
     add_to_total_tickets,
@@ -295,6 +295,7 @@ async def end_lottery(bot: commands.Bot, lottery_id: int, context: str = "lotter
         return
     processing_end_lottery_ids.add(lottery_id)
 
+
     lottery_info = await fetch_lottery_info_by_lottery_id(bot, lottery_id)
     if not lottery_info:
         pretty_log(
@@ -423,6 +424,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             f"No lottery found for thread id {thread_id}. Ignoring.",
         )
         return
+    processing_lottery_purchase_ids.add(message.id)
     ticket_cost = lottery_info["ticket_price"]
     max_tickets = lottery_info["max_tickets"]
     total_tickets = lottery_info["total_tickets"]
@@ -444,6 +446,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "info",
             f"Could not determine any tickets bought from message {message.id}. Ignoring.",
         )
+        processing_lottery_purchase_ids.remove(message.id)
         return
 
     # Cap tickets if max_tickets is set and handle refund
@@ -454,6 +457,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         if available_tickets <= 0:
             # No tickets left
             await message.channel.send(f"All tickets for this lottery are sold out!")
+            processing_lottery_purchase_ids.remove(message.id)
             return
         if tickets_bought > available_tickets:
             # Cap tickets and calculate refund
@@ -482,6 +486,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "error",
             f"Could not find channel {channel_id} for lottery id {lottery_id} when trying to update lottery after ticket purchase. Message id: {message.id}",
         )
+        processing_lottery_purchase_ids.remove(message.id)
         return
     try:
         lottery_message = await channel.fetch_message(message_id)
@@ -490,6 +495,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "error",
             f"Could not fetch lottery message {message_id} for lottery id {lottery_id} when trying to update lottery after ticket purchase. Message id: {message.id}. Error: {e}",
         )
+        processing_lottery_purchase_ids.remove(message.id)
         return
     lottery_embed = lottery_message.embeds[0] if lottery_message.embeds else None
     if not lottery_embed:
@@ -497,11 +503,13 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "error",
             f"No embed found in lottery message {message_id} for lottery id {lottery_id} when trying to update lottery after ticket purchase. Message id: {message.id}",
         )
+        processing_lottery_purchase_ids.remove(message.id)
         return
     updated_embed = update_tickets_sold(lottery_embed, str(new_tickets_sold))
     try:
         await lottery_message.edit(embed=updated_embed)
     except Exception as e:
+        processing_lottery_purchase_ids.remove(message.id)
         pretty_log(
             "error",
             f"Could not edit lottery message {message_id} to update tickets sold for lottery id {lottery_id} after ticket purchase. Message id: {message.id}. Error: {e}",
@@ -530,6 +538,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         purchase_message = f"**{member.name}** bought {tickets_bought} ticket(s) for Lottery ID {lottery_id}."
         await message.channel.send(purchase_message)
     except Exception as e:
+        processing_lottery_purchase_ids.remove(message.id)
         pretty_log(
             "error",
             f"Could not add reaction to message {message.id} after lottery ticket purchase. Error: {e}",
@@ -545,6 +554,8 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             await lottery_message.edit(embed=updated_embed)
             await update_prize(bot, lottery_id=lottery_id, new_prize=str(new_pot))
         except Exception as e:
+            processing_lottery_purchase_ids.remove(message.id)
+
             pretty_log(
                 "error",
                 f"Could not edit lottery message {message_id} to update current pot for lottery id {lottery_id} after ticket purchase. Message id: {message.id}. Error: {e}",
@@ -563,6 +574,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
                 f"Successfully ended lottery id {lottery_id} after max tickets reached. Message id: {message.id}",
             )
         except Exception as e:
+            processing_lottery_purchase_ids.remove(message.id)
             pretty_log(
                 "error",
                 f"Error ending lottery id {lottery_id} after max tickets reached. Message id: {message.id}. Error: {e}",

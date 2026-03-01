@@ -30,7 +30,7 @@ from utils.logs.pretty_log import pretty_log
 
 # enable_debug(f"{__name__}.market_snipe_handler")
 # enable_debug(f"{__name__}.handle_market_alert")
-enable_debug(f"{__name__}.market_feeds_listener")
+#enable_debug(f"{__name__}.market_feeds_listener")
 # 🟣────────────────────────────────────────────
 #  ⚡ Market Snipe ⚡
 # 🟣────────────────────────────────────────────

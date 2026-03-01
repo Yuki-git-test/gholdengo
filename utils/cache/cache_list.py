@@ -7,6 +7,7 @@ snipe_ga_active = False
 
 active_lottery_thread_ids: set[int] = set()
 processing_end_lottery_ids: set[int] = set()
+processing_lottery_purchase_ids: set[int] = set()
 
 def clear_processed_messages_cache():
     """Clears all processed message ID caches."""

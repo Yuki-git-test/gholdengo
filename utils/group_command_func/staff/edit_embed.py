@@ -5,8 +5,8 @@ from discord import Embed, Interaction, Message, app_commands
 from discord.ext import commands
 
 from Constants.vn_allstars_constants import VNA_SERVER_ID
-from utils.logs.pretty_log import pretty_log
 from utils.essentials.role_checks import *
+from utils.logs.pretty_log import pretty_log
 
 
 class EmbedEditModal(discord.ui.Modal):
@@ -14,16 +14,18 @@ class EmbedEditModal(discord.ui.Modal):
         super().__init__(title="Edit Embed")
         self.message = message
 
-        # ✨ Message content
-        self.content_input = discord.ui.TextInput(
-            label="Message Content",
-            style=discord.TextStyle.paragraph,
-            max_length=2000,
-            default=message.content or "",
+        # Removed message content input to stay within Discord modal limit
+
+        # 📝 Embed title
+        self.title_input = discord.ui.TextInput(
+            label="Embed Title",
+            style=discord.TextStyle.short,
+            max_length=256,
+            default=original_embed.title or "",
             required=False,
-            placeholder="Edit the message text (optional).",
+            placeholder="Edit the embed title (optional).",
         )
-        self.add_item(self.content_input)
+        self.add_item(self.title_input)
 
         # 📝 Embed description
         self.description_input = discord.ui.TextInput(
@@ -36,39 +38,19 @@ class EmbedEditModal(discord.ui.Modal):
         )
         self.add_item(self.description_input)
 
-        # 🎨 Meta: Color, Title, Footer, Author, Icon
+        # 🎨 Embed color
         default_color = (
             f"{original_embed.color.value:06X}" if original_embed.color else ""
         )
-        default_title = original_embed.title or ""
-        default_footer = original_embed.footer.text if original_embed.footer else ""
-        default_author = original_embed.author.name if original_embed.author else ""
-        default_author_icon = (
-            str(original_embed.author.icon_url)
-            if (original_embed.author and original_embed.author.icon_url)
-            else ""
-        )
-
-        # ✅ Always include all fields, empty ones are blank
-        default_combo = ",".join(
-            [
-                default_color,
-                default_title,
-                default_footer,
-                default_author,
-                default_author_icon,
-            ]
-        )
-
-        self.meta_input = discord.ui.TextInput(
-            label="Color, Title, Footer, Author, Icon",
-            style=discord.TextStyle.paragraph,
-            max_length=1000,
-            default=default_combo,
+        self.color_input = discord.ui.TextInput(
+            label="Embed Color (hex)",
+            style=discord.TextStyle.short,
+            max_length=6,
+            default=default_color,
             required=False,
-            placeholder="Example: C084FC, Giveaway Time!, Don’t miss out!, Wooper, https://example.com/icon.png",
+            placeholder="e.g. FFFFFF",
         )
-        self.add_item(self.meta_input)
+        self.add_item(self.color_input)
 
         # 🖼️ Image URL
         self.image_input = discord.ui.TextInput(
@@ -104,51 +86,66 @@ class EmbedEditModal(discord.ui.Modal):
         import traceback
 
         try:
-            # ⏱ Defer response to prevent "application did not respond"
             await interaction.response.defer(ephemeral=True, thinking=True)
 
-            # Split meta input into all 5 fields
-            meta_parts = [p.strip() for p in (self.meta_input.value or "").split(",")]
-            # Fill missing parts with None
-            while len(meta_parts) < 5:
-                meta_parts.append(None)
-
-            color_hex, title, footer, author_name, author_icon = meta_parts[:5]
+            # Get values from modal
+            title = self.title_input.value.strip() or None
+            description = self.description_input.value.strip() or None
+            color_hex = self.color_input.value.strip()
+            image_url = self.image_input.value.strip()
+            thumbnail_url = self.thumbnail_input.value.strip()
+            # Message content editing removed
+            new_content = None
 
             # Convert color safely
             try:
                 color = (
                     discord.Color(int(color_hex, 16))
                     if color_hex
-                    else discord.Color.purple()
+                    else (
+                        interaction.message.embeds[0].color
+                        if interaction.message.embeds
+                        and interaction.message.embeds[0].color
+                        else discord.Color.purple()
+                    )
                 )
-            except ValueError:
+            except Exception:
                 color = discord.Color.purple()
 
+            # Create new embed and copy fields
+            original_embed = self.message.embeds[0] if self.message.embeds else None
             new_embed = discord.Embed(
-                title=title or None,
-                description=(self.description_input.value or "").strip() or None,
+                title=title,
+                description=description,
                 color=color,
             )
+            if image_url:
+                new_embed.set_image(url=image_url)
+            if thumbnail_url:
+                new_embed.set_thumbnail(url=thumbnail_url)
+            # Copy all fields from original embed
+            if original_embed:
+                for field in original_embed.fields:
+                    new_embed.add_field(
+                        name=field.name, value=field.value, inline=field.inline
+                    )
+                # Preserve footer text and icon
+                if original_embed.footer and original_embed.footer.text:
+                    icon_url = (
+                        original_embed.footer.icon_url
+                        if hasattr(original_embed.footer, "icon_url")
+                        else None
+                    )
+                    new_embed.set_footer(
+                        text=original_embed.footer.text, icon_url=icon_url
+                    )
 
-            if footer:
-                new_embed.set_footer(text=footer)
-            if author_name:
-                new_embed.set_author(name=author_name, icon_url=author_icon or None)
-            if self.image_input.value.strip():
-                new_embed.set_image(url=self.image_input.value.strip())
-            if self.thumbnail_input.value.strip():
-                new_embed.set_thumbnail(url=self.thumbnail_input.value.strip())
-
-            new_content = (self.content_input.value or "").strip() or None
-
-            await self.message.edit(content=new_content, embed=new_embed)
+            await self.message.edit(embed=new_embed)
             jump_link = f"https://discord.com/channels/{interaction.guild.id}/{self.message.channel.id}/{self.message.id}"
             await interaction.followup.send(
                 f"✅ Message and embed updated successfully! [Jump to message]({jump_link})",
                 ephemeral=True,
             )
-
         except Exception as e:
             traceback.print_exc()
             if interaction.response.is_done():

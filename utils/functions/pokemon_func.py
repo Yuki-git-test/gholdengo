@@ -33,10 +33,16 @@ exclusive_mons_list = list(exclusive_mons.keys())
 
 def get_embed_color_by_rarity(pokemon_name: str) -> int:
     rarity = get_rarity(pokemon_name)
-    if rarity and rarity in rarity_meta:
-        return rarity_meta[rarity]["color"]
-    else:
-        return 0xFFFFFF  # Default to white if rarity is unknown
+    if rarity:
+        meta = rarity_meta.get(rarity, {})
+        color = meta.get("color")
+        # If color is missing for shiny mega or shiny gigantamax, use shiny color
+        if color is not None:
+            return color
+        elif rarity in ["shiny mega", "shiny gigantamax"]:
+            shiny_color = rarity_meta.get("shiny", {}).get("color", 0xFFFFFF)
+            return shiny_color
+    return 0xFFFFFF  # Default to white if rarity is unknown
 
 
 def format_price_w_coin(n: int) -> str:
@@ -144,7 +150,7 @@ def get_rarity(pokemon: str):
         return "shiny"
     elif "gigantamax" in name:
         debug_log(f"Matched 'gigantamax' in name: {name}")
-        return "gmax"
+        return "gigantamax"
     elif "mega" in name and not "yanmega" in name and not "meganium" in name:
         debug_log(f"Matched 'mega' in name (not yanmega/meganium): {name}")
         return "mega"

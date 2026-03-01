@@ -1,5 +1,5 @@
-from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS
 from Constants.grand_line_auction_constants import GRAND_LINE_AUCTION_EMOJIS
+from Constants.vn_allstars_constants import VN_ALLSTARS_EMOJIS
 
 Legendary_icon_url = (
     "https://cdn.discordapp.com/emojis/834534206007803984.webp?size=96&quality=lossless"
@@ -40,8 +40,8 @@ rarity_meta = {
     "event_exclusive": {"color": 15345163},
     "mega": {"emoji": VN_ALLSTARS_EMOJIS.mega},
     "shiny mega": {"emoji": VN_ALLSTARS_EMOJIS.vna_smega},
-    #"golden mega": {"emoji": VN_ALLSTARS_EMOJIS.vna_gm},
-    "gigantamax": {"emoji": VN_ALLSTARS_EMOJIS.vna_gmax},
+    # "golden mega": {"emoji": VN_ALLSTARS_EMOJIS.vna_gm},
+    "gigantamax": {"color": 10685254, "emoji": VN_ALLSTARS_EMOJIS.vna_gmax},
     "shiny gigantamax": {"emoji": VN_ALLSTARS_EMOJIS.vna_shinygmax},
 }
 common_icon_url = (
@@ -1466,4 +1466,6 @@ def get_color_by_rarity(rarity_name):
     rarity_data = rarity_meta.get(rarity_name.lower())
     if rarity_data and "color" in rarity_data:
         return rarity_data["color"]
+    return rarity_meta["unknown"]["color"]
+    return rarity_meta["unknown"]["color"]
     return rarity_meta["unknown"]["color"]
