@@ -3,15 +3,16 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import Button, View
 
+from Constants.aesthetic import Emojis
 from Constants.vn_allstars_constants import VN_ALLSTARS_TEXT_CHANNELS
-from utils.db.lottery import (fetch_lottery_info_by_lottery_id,
-                              is_lottery_active)
+from utils.db.lottery import fetch_lottery_info_by_lottery_id, is_lottery_active
 from utils.db.lottery_entries import fetch_all_entries_for_a_lottery
 from utils.functions.pokemon_func import format_price_w_coin, get_display_name
 from utils.group_command_func.lottery.pokemon import if_testing_lottery
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.pretty_defer import pretty_defer
 
+TICKET_EMOJI = Emojis.lottery_ticket
 from .view import calculate_winning_chance
 
 
@@ -81,15 +82,16 @@ class Lottery_Ticket_Paginator(View):
         ends_on = self.lottery_info["ends_on"]
         display_duration = f"<t:{ends_on}:R>" if ends_on else "No time limit"
         max_tickets = self.lottery_info["max_tickets"] or "No Limit"
-        ticket_price = format_price_w_coin(self.lottery_info["ticket_price"])
+        ticket_price = self.lottery_info["ticket_price"]
+        formatted_ticket_price = format_price_w_coin(ticket_price)
         sold_tickets = self.lottery_info["total_tickets"]
         lottery_link = f"https://discord.com/channels/{guild.id}/{self.channel.id}/{self.lottery_info['message_id']}"
         desc = (
             f"> - [View Lottery]({lottery_link})\n"
             f"{base_pot_str}"
             f"> - 🎁 **Prize:** {prize_display}\n"
-            f"> - 🎟️ **Max Tickets:** {max_tickets}\n"
-            f"> - 💵  **Cost per Ticket**: {ticket_price}\n"
+            f"> - {TICKET_EMOJI} **Max Tickets:** {max_tickets}\n"
+            f"> - 💵  **Cost per Ticket**: {formatted_ticket_price}\n"
             f"> - ⏰ **Ends:** {display_duration}\n"
             f"> - 📊 **Total Tickets Sold:** {sold_tickets}\n\n"
         )
@@ -104,10 +106,13 @@ class Lottery_Ticket_Paginator(View):
             entries_count = record["entries"]
             user = guild.get_member(user_id)
             username = user.name or f"User ID {user_id}"
+            amount_spent = entries_count * ticket_price
+            formatted_amount_spent = format_price_w_coin(amount_spent)
+            amount_spent_str = f"> - **Total Spent:** {formatted_amount_spent}\n"
             winning_chance = calculate_winning_chance(entries_count, sold_tickets)
             embed.add_field(
                 name=f"{idx}. {username}",
-                value=f"> - **Tickets:** {entries_count}\n> - **Chance to Win:** {winning_chance}",
+                value=f"> - **Tickets:** {TICKET_EMOJI} {entries_count}\n{amount_spent_str}\n> - **Winning Chance:** {winning_chance}",
                 inline=False,
             )
         return embed

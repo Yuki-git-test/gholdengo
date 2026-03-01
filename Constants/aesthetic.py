@@ -2,7 +2,7 @@ class Emojis:
     loading = "<a:YellowLoading:1468145924739174571>"
     check = "✅"
     error = "❌"
-
+    lottery_ticket = "<a:vna_ticket:1477600935529414666>"
 
 class Thumbnails:
     pokemon_lottery_ticket = "https://media.discordapp.net/attachments/1459004743295963206/1473268166405918781/image.png?ex=69959766&is=699445e6&hm=47b0fceb7fa2aa72b62476d06e4226b10382661c3cdd5d8a90c1f23a42ac5d35&=&format=webp&quality=lossless"

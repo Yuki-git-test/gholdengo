@@ -18,12 +18,12 @@ from utils.functions.pokemon_func import is_mon_in_game
 from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_lottery_duration
 from utils.visuals.pretty_defer import pretty_defer
-
+from Constants.aesthetic import Emojis
 from .embed import create_coin_lottery_embed
 from .pokemon import if_testing_lottery, validate_ticket_price
 
 # ( {tickets x tickets price} x 75%)
-
+TICKET_EMOJI = Emojis.lottery_ticket
 
 async def coin_lottery_func(
     bot: commands.Bot,

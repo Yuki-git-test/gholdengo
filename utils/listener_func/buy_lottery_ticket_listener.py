@@ -13,7 +13,10 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_TEXT_CHANNELS,
     YUKI_USER_ID,
 )
-from utils.cache.cache_list import processing_end_lottery_ids, processing_lottery_purchase_ids
+from utils.cache.cache_list import (
+    processing_end_lottery_ids,
+    processing_lottery_purchase_ids,
+)
 from utils.cache.global_variables import TESTING_LOTTERY
 from utils.db.lottery import (
     add_to_total_tickets,
@@ -45,6 +48,7 @@ from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_total_duration
 from utils.visuals.pretty_defer import pretty_defer
 
+TICKET_EMOJI = Emojis.lottery_ticket
 from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
 
 
@@ -184,7 +188,7 @@ def update_tickets_sold(embed: discord.Embed, tickets: str):
         if field.name == "Sold Tickets":
             embed.set_field_at(
                 embed.fields.index(field),
-                name="Sold Tickets",
+                name=f"{TICKET_EMOJI} Sold Tickets",
                 value=tickets,
                 inline=False,
             )
@@ -294,7 +298,6 @@ async def end_lottery(bot: commands.Bot, lottery_id: int, context: str = "lotter
         )
         return
     processing_end_lottery_ids.add(lottery_id)
-
 
     lottery_info = await fetch_lottery_info_by_lottery_id(bot, lottery_id)
     if not lottery_info:
@@ -533,9 +536,17 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
     # React to the user's message with a ticket emoji to indicate successful purchase
     try:
         if replied_message_object:
-            await replied_message_object.add_reaction("🎟️")
+            await replied_message_object.add_reaction(TICKET_EMOJI)
             await replied_message_object.remove_reaction(Emojis.loading, bot.user)
-        purchase_message = f"**{member.name}** bought {tickets_bought} ticket(s) for Lottery ID {lottery_id}."
+            tickets_left_str = (
+                f"{max(available_tickets - tickets_bought, 0)} ticket(s) left"
+                if max_tickets != 0
+                else ""
+            )
+        purchase_message = (
+            f"**{member.name}** bought {tickets_bought} ticket(s) for Lottery ID {lottery_id}.\n"
+            f"{tickets_left_str}"
+        )
         await message.channel.send(purchase_message)
     except Exception as e:
         processing_lottery_purchase_ids.discard(message.id)

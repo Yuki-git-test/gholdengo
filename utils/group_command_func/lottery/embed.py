@@ -2,7 +2,7 @@ import time
 
 import discord
 from discord.ext import commands
-
+from Constants.aesthetic import Emojis
 from Constants.lottery import Lotto_Extra_Entries
 from utils.db.lottery import upsert_lottery
 from utils.essentials.parsers import parse_compact_number
@@ -17,7 +17,7 @@ from utils.parsers.duration import parse_total_duration
 from utils.visuals.design_embed import design_embed
 from utils.visuals.get_pokemon_gif import get_pokemon_gif
 from utils.visuals.pretty_defer import pretty_defer
-
+TICKET_EMOJI = Emojis.lottery_ticket
 
 def format_lotto_extra_tickets(guild: discord.Guild) -> str:
     # Since Extra_Entries is now a dict mapping role_id to entry_bonus (int), ignore entry_group
@@ -56,7 +56,7 @@ def create_pokemon_lottery_embed(
     desc = (
         f"👤 **Host:** {host.mention}\n"
         f"🎁 **Prize:** {display_prize}\n"
-        f"🎟️ **Max Tickets:** {max_tickets}\n"
+        f"{TICKET_EMOJI} **Max Tickets:** {max_tickets}\n"
         f"💵  **Cost per Ticket**: {display_cost}\n"
         f"⏰ **Ends:** {display_duration}\n\n"
         f"💎 **Extra Tickets:** {extra_ticket_display}\n-# Bonus Tickets are added upon first purchase\n"
@@ -101,7 +101,7 @@ def create_coin_lottery_embed(
         f"👤 **Host:** {host.mention}\n"
         f"{base_pot_str}"
         f"🎁 **Pot Formula:** {prize_formula}\n"
-        f"🎟️ **Max Tickets:** {max_tickets}\n"
+        f"{TICKET_EMOJI} **Max Tickets:** {max_tickets}\n"
         f"💵  **Cost per Ticket**: {display_cost}\n"
         f"⏰ **Ends:** {display_duration}\n\n"
         f"💎 **Extra Tickets:** {extra_ticket_display}\n-# Bonus Tickets are added upon first purchase\n"
