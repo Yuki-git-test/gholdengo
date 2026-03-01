@@ -573,9 +573,11 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
                 "info",
                 f"Successfully ended lottery id {lottery_id} after max tickets reached. Message id: {message.id}",
             )
+            processing_lottery_purchase_ids.remove(message.id)
         except Exception as e:
             processing_lottery_purchase_ids.remove(message.id)
             pretty_log(
                 "error",
                 f"Error ending lottery id {lottery_id} after max tickets reached. Message id: {message.id}. Error: {e}",
             )
+    processing_lottery_purchase_ids.remove(message.id)
