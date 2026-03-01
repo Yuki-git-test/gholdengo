@@ -194,6 +194,7 @@ class SnipeGAView(discord.ui.View):
                 host=self.host,
                 prize=self.prize,
                 entries=len(self.joined_users),
+                giveaway_type=self.giveaway_type,
                 ends_at=self.ends_at,
                 winner_count=self.winners_count,
             )
