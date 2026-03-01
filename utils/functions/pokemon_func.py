@@ -68,16 +68,31 @@ def strip_prefixes(pokemon_name: str):
     return pokemon_name.strip().title()
 
 
-def get_display_name(pokemon_name: str, dex: bool = False) -> str:
+RARITY_W_LONG_NAME = ["shiny gigantamax", "gigantamax"]
+
+
+def get_display_name(
+    pokemon_name: str, dex: bool = False, is_long_name: bool = False
+) -> str:
     """Returns the display name of a Pokémon, optionally including the dex number."""
 
     rarity = get_rarity(pokemon_name)
     rarity_emoji = rarity_meta.get(rarity, {}).get("emoji", "") if rarity else ""
 
     # Strip prefixes for display name to avoid clutter (e.g., "Shiny", "Mega", etc.)
-    pokemon_name = strip_prefixes(pokemon_name)
+    stripped_name = strip_prefixes(pokemon_name)
 
-    display_name = f"{rarity_emoji} {pokemon_name}".strip()
+    if rarity in RARITY_W_LONG_NAME or is_long_name:
+        is_long_name = True
+    else:
+        is_long_name = False
+
+    if is_long_name:
+        formatted_name = pokemon_name.title()
+    else:
+        formatted_name = stripped_name.title()
+
+    display_name = f"{rarity_emoji} {formatted_name}".strip()
 
     if dex:
         dex_number = get_dex_number_by_name(pokemon_name)
@@ -120,10 +135,10 @@ def get_rarity(pokemon: str):
         return "golden"
     elif "shiny" in name and "gigantamax" in name:
         debug_log(f"Matched 'shiny' and 'gigantamax' in name: {name}")
-        return "sgmax"
+        return "shiny gigantamax"
     elif "shiny" in name and "mega" in name:
         debug_log(f"Matched 'shiny' and 'mega' in name: {name}")
-        return "smega"
+        return "shiny mega"
     elif "shiny" in name:
         debug_log(f"Matched 'shiny' in name: {name}")
         return "shiny"
