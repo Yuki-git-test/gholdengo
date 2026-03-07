@@ -152,9 +152,11 @@ class SnipeGAView(discord.ui.View):
                 return
 
             member = interaction.user
-            if self.giveaway_type == "clan":
-                member_roles = {r.id for r in member.roles}
+            member_roles = {
+                r.id for r in member.roles
+            }  # Ensure member_roles is always defined
 
+            if self.giveaway_type == "clan":
                 # Exception: allow seafoam role if TESTING is True
                 missing_roles = [
                     f"<@&{role_id}>"

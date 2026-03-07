@@ -233,7 +233,7 @@ class CommandsView(commands.Cog):
             # Staff check
             # Flatten commands
             all_commands = flatten_commands(self.bot.tree.get_commands(guild=guild_obj))
-            command_map = {"Public": [], "Staff": []}
+            scommand_map = {"Public": [], "Staff": []}
             staff_role = guild.get_role(VN_ALLSTARS_ROLES.staff)
             khy_role = guild.get_role(VN_ALLSTARS_ROLES.seafoam)
             for cmd in all_commands:
