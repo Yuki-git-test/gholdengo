@@ -19,6 +19,11 @@ def format_comma_pokecoins(number: int) -> str:
     """Format a number with commas and add ' PokéCoins' suffix. If None, return 'None'."""
     if number is None:
         return "None"
+    # Ensure number is always an integer for formatting
+    try:
+        number = int(round(float(number)))
+    except (ValueError, TypeError):
+        return str(number)
     return f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {number:,}"
 
 
