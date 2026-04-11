@@ -66,3 +66,12 @@ vna_members_cache: dict[int, dict] = {}
 # }
 
 market_value_cache: dict[str, dict] = {}
+
+# 🍩────────────────────────────────────────────
+#        💤 Pokemon List Cache
+# 🍩────────────────────────────────────────────
+pokemon_list_cache: dict[str, int] = {}
+# Structure:
+# pokemon_list_cache = {
+#     "pokemon_name": "dex_number",
+#     }

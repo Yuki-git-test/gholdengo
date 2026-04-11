@@ -17,6 +17,11 @@ from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer
+from utils.functions.pokemon_func import (
+    is_mon_in_game,
+    get_display_name,
+    get_dex_number_by_name,
+)
 
 from .add import resolve_pokemon_input_func
 
@@ -89,17 +94,15 @@ async def remove_market_alert_func(
         return
 
     else:
-        # Resolve Pokemon input
-        try:
-            target_name, dex_number = resolve_pokemon_input_func(pokemon)
-        except ValueError as e:
-            pretty_log(
-                "error",
-                f"Failed to resolve Pokemon input '{pokemon}' for user {user_name} (ID: {user_id}): {e}",
-                label="MARKET ALERT ADD",
+        # Get dex number and validate pokemon
+        if not is_mon_in_game(pokemon):
+            await loader.error(
+                content=f"'{pokemon}' is not a valid Pokémon name.",
             )
-            await loader.error(str(e))
             return
+        dex_number = get_dex_number_by_name(pokemon)
+        target_name = pokemon.lower()
+        display_name = get_display_name(pokemon, dex=True)
 
         # Check if user has an existing alert for this pokemon
         existing_alert = None
@@ -146,7 +149,7 @@ async def remove_market_alert_func(
         # Send success message
         desc = (
             f"{alerts_used_str}"
-            f"**Pokemon:** {target_name.title()} #{dex_number}\n"
+            f"**Pokemon:** {display_name}\n"
             f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
             f"**Channel:** <#{channel_id}>\n"
             f"**Role:** {role_str}\n"
@@ -167,7 +170,7 @@ async def remove_market_alert_func(
         desc = (
             f"**User:** {user.mention}\n"
             f"{alerts_used_str}"
-            f"**Pokemon:** {target_name.title()} #{dex_number}\n"
+            f"**Pokemon:** {display_name}\n"
             f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
             f"**Channel:** <#{channel_id}>\n"
             f"**Role:** {role_str}\n"

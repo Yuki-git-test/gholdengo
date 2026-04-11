@@ -27,7 +27,7 @@ from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer
-
+from utils.functions.pokemon_func import is_mon_in_game, get_display_name, get_dex_number_by_name
 # enable_debug(f"{__name__}.resolve_pokemon_input_func")
 
 
@@ -167,17 +167,15 @@ async def add_market_alert_func(
             return
         max_price = int(parse_price)
 
-        # Resolve Pokemon input
-        try:
-            target_name, dex_number = resolve_pokemon_input_func(pokemon)
-        except ValueError as e:
-            pretty_log(
-                "error",
-                f"Failed to resolve Pokemon input '{pokemon}' for user {user_name} (ID: {user_id}): {e}",
-                label="MARKET ALERT ADD",
+        # Get dex number and validate pokemon
+        if not is_mon_in_game(pokemon):
+            await loader.error(
+                content=f"'{pokemon}' is not a valid Pokémon name.",
             )
-            await loader.error(str(e))
             return
+        dex_number = get_dex_number_by_name(pokemon)
+        target_name = pokemon.lower()
+        display_name = get_display_name(pokemon, dex=True)
 
         # Insert market alert into database
         try:
@@ -214,7 +212,7 @@ async def add_market_alert_func(
                 title="✅ Market Alert Added",
                 description=(
                     f"{alerts_used_str}"
-                    f"**Pokemon:** {target_name.title()} #{dex_number}\n"
+                    f"**Pokemon:** {display_name}\n"
                     f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
                     f"**Channel:** {channel.mention}\n"
                     f"**Role:** {role.mention if role else 'None'}\n\n"
@@ -242,7 +240,7 @@ async def add_market_alert_func(
                 description=(
                     f"**User:** {user.mention}\n"
                     f"**Alerts:** {current_alerts_used}/{current_max_alerts}\n"
-                    f"**Pokemon:** {target_name.title()} #{dex_number}\n"
+                    f"**Pokemon:** {display_name}\n"
                     f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {max_price:,}\n"
                     f"**Channel:** {channel.mention}\n"
                     f"**Role:** {role.mention if role else 'None'}\n"

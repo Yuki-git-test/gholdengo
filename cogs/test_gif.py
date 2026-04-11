@@ -7,7 +7,7 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_ROLES,
     VNA_SERVER_ID,
 )
-from utils.essentials.pokemon_autocomplete import pokemon_autocomplete
+from utils.db.market_value_db import pokemon_autocomplete
 from utils.functions.pokemon_func import (
     format_price_w_coin,
     get_display_name,

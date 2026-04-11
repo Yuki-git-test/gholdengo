@@ -11,6 +11,11 @@ from utils.logs.pretty_log import pretty_log
 from utils.logs.server_log import send_log_to_server_log
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer, pretty_error
+from utils.functions.pokemon_func import (
+    is_mon_in_game,
+    get_display_name,
+    get_dex_number_by_name,
+)
 
 from .add import resolve_pokemon_input_func
 
@@ -47,12 +52,15 @@ async def update_market_alert_func(
         ephemeral=False,
     )
 
-    # Resolve the pokemon input
-    try:
-        target_name, dex_number = resolve_pokemon_input_func(pokemon)
-    except ValueError as e:
-        await loader.error(content=str(e))
+    # Get dex number and validate pokemon
+    if not is_mon_in_game(pokemon):
+        await loader.error(
+            content=f"'{pokemon}' is not a valid Pokémon name.",
+        )
         return
+    dex_number = get_dex_number_by_name(pokemon)
+    target_name = pokemon.lower()
+    display_name = get_display_name(pokemon, dex=True)
 
     # Validate new price
     if new_max_price:
@@ -129,7 +137,7 @@ async def update_market_alert_func(
         # Build confirmation message
         embed = discord.Embed(
             title="Market Alert Updated!",
-            description=f"**Pokemon:** {target_name.title()} #{dex_number}\n",
+            description=f"**Pokemon:** {display_name}\n",
         )
         if new_max_price:
             embed.description += f"**Max Price:** {VN_ALLSTARS_EMOJIS.vna_pokecoin} {old_max_price} → {VN_ALLSTARS_EMOJIS.vna_pokecoin} {parsed_price}\n"
@@ -154,7 +162,7 @@ async def update_market_alert_func(
             title="📢 Market Alert Updated",
             description=(
                 f"**User:** {user.mention}\n"
-                f"**Pokemon:** {target_name.title()} #{dex_number}\n"
+                f"**Pokemon:** {display_name}\n"
             ),
         )
         if new_max_price:

@@ -7,10 +7,7 @@ from discord.ext import commands
 from Constants.vn_allstars_constants import VNA_SERVER_ID
 from utils.db.lottery import active_lottery_autocomplete, ended_lottery_autocomplete
 from utils.essentials.command_safe import run_command_safe
-from utils.essentials.pokemon_autocomplete import (
-    pokemon_autocomplete,
-    user_alerts_autocomplete,
-)
+from utils.db.market_value_db import pokemon_autocomplete
 from utils.group_command_func.lottery import *
 from utils.logs.pretty_log import pretty_log
 
