@@ -44,12 +44,18 @@ from utils.functions.pokemon_func import (
     is_mon_in_game,
 )
 from utils.functions.webhook_func import send_webhook
+from utils.logs.debug_log import debug_log, enable_debug
 from utils.logs.pretty_log import pretty_log
 from utils.parsers.duration import parse_total_duration
 from utils.visuals.pretty_defer import pretty_defer
 
 TICKET_EMOJI = Emojis.lottery_ticket
 from .donation_listener import CLAN_BANK_IDS, extract_any_pokecoins_amount
+
+enable_debug(f"{__name__}.create_and_send_winner_announcement")
+enable_debug(f"{__name__}.create_lottery_tracker_embed")
+enable_debug(f"{__name__}.update_lottery_embed_with_winners")
+enable_debug(f"{__name__}.buy_lottery_ticket_listener")
 
 
 async def create_and_send_winner_announcement(bot, lottery_info, winners, context: str):
@@ -384,14 +390,19 @@ async def end_lottery(bot: commands.Bot, lottery_id: int, context: str = "lotter
 
 async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Message):
     """Listens to buy lottery ticket command output and updates the lottery message with the new ticket buyer and pot amount."""
+    debug_log(
+        f"Received lottery ticket listener message_id={message.id} channel_id={getattr(message.channel, 'id', 'unknown')}"
+    )
 
     # Get replied message
     if not message.reference:
+        debug_log("Message has no reference. Skipping.")
         return
     replied_message = (
         message.reference.resolved.content if message.reference.resolved else None
     )
     if not replied_message:
+        debug_log("Referenced message content is empty or unresolved. Skipping.")
         return
     # Get member
     member = await get_pokemeow_reply_member(message)
@@ -400,6 +411,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "info",
             f"Could not get member from PokéMeow reply for message {message.id}. Ignoring.",
         )
+        debug_log("Failed to resolve member from PokéMeow reply.")
         return
     replied_message_object = message.reference.resolved if message.reference else None
     if replied_message_object:
@@ -417,6 +429,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "info",
             f"Message {message.id} does not mention any of the clan bank ids. Ignoring.",
         )
+        debug_log("Referenced message does not contain a recognized clan bank id.")
         return
     # Get lottery info based on current channel/thread id
     thread_id = message.channel.id
@@ -426,6 +439,7 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "info",
             f"No lottery found for thread id {thread_id}. Ignoring.",
         )
+        debug_log(f"No lottery info found for thread_id={thread_id}.")
         return
     processing_lottery_purchase_ids.add(message.id)
     ticket_cost = lottery_info["ticket_price"]
@@ -437,17 +451,24 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
 
     # Extract amount from the message content using regex
     amount = extract_any_pokecoins_amount(message.content)
+    debug_log(f"Parsed payment amount={amount} from message_id={message.id}.")
 
     # Calculate how many tickets were bought based on the amount and ticket cost
     if ticket_cost == 0:
         tickets_bought = 1
     else:
         tickets_bought = amount // ticket_cost
+    debug_log(
+        f"Computed tickets_bought={tickets_bought} using ticket_cost={ticket_cost} for lottery_id={lottery_id}."
+    )
 
     if tickets_bought <= 0:
         pretty_log(
             "info",
             f"Could not determine any tickets bought from message {message.id}. Ignoring.",
+        )
+        debug_log(
+            "Ticket computation resulted in 0 or less. Aborting purchase processing."
         )
         processing_lottery_purchase_ids.discard(message.id)
         return
@@ -460,6 +481,9 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
         if available_tickets <= 0:
             # No tickets left
             await message.channel.send(f"All tickets for this lottery are sold out!")
+            debug_log(
+                f"Lottery sold out for lottery_id={lottery_id}. No tickets available."
+            )
             processing_lottery_purchase_ids.discard(message.id)
             return
         if tickets_bought > available_tickets:
@@ -467,6 +491,9 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             excess_tickets = tickets_bought - available_tickets
             refund_amount = excess_tickets * ticket_cost
             tickets_bought = available_tickets
+            debug_log(
+                f"Capped tickets_bought to {tickets_bought} with excess_tickets={excess_tickets}, refund_amount={refund_amount}."
+            )
             # Ask bank account to refund excess
             await message.channel.send(
                 f"You requested more tickets than available. Only {available_tickets} ticket(s) were purchased. Please ask for a refund {refund_amount:,} Pokécoins for the excess {excess_tickets} ticket(s)."
@@ -479,6 +506,9 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
     # Update total tickets in lottery db
     await add_to_total_tickets(bot, lottery_id=lottery_id, tickets_to_add=total_tickets)
     new_tickets_sold = await get_total_tickets(bot, lottery_id=lottery_id)
+    debug_log(
+        f"Updated lottery totals for lottery_id={lottery_id}: added={total_tickets}, new_tickets_sold={new_tickets_sold}."
+    )
     # Edit lottery message embed to show new ticket buyer and updated pot amount
     channel_id = lottery_info["channel_id"]
     message_id = lottery_info["message_id"]
@@ -548,6 +578,9 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             f"{tickets_left_str}"
         )
         await message.channel.send(purchase_message)
+        debug_log(
+            f"Purchase announcement sent for user_id={member.id}, lottery_id={lottery_id}, tickets_bought={tickets_bought}."
+        )
     except Exception as e:
         processing_lottery_purchase_ids.discard(message.id)
         pretty_log(
@@ -578,6 +611,9 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
             "info",
             f"Max tickets reached for lottery id {lottery_id}. Ending lottery. Message id: {message.id}",
         )
+        debug_log(
+            f"Max tickets reached for lottery_id={lottery_id} with sold={new_tickets_sold}/{max_tickets}. Triggering end_lottery."
+        )
         try:
             await end_lottery(bot, lottery_id)
             pretty_log(
@@ -591,4 +627,8 @@ async def buy_lottery_ticket_listener(bot: commands.Bot, message: discord.Messag
                 "error",
                 f"Error ending lottery id {lottery_id} after max tickets reached. Message id: {message.id}. Error: {e}",
             )
+            debug_log(f"end_lottery raised error for lottery_id={lottery_id}: {e}")
     processing_lottery_purchase_ids.discard(message.id)
+    debug_log(
+        f"Completed purchase processing for message_id={message.id}, lottery_id={lottery_id}."
+    )
