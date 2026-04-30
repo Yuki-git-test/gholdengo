@@ -31,11 +31,11 @@ async def giveaway_end_checker(bot: discord.Client):
         processing_end_giveaway_message_ids.add(message_id)
         try:
             await end_giveaway_handler(bot, message_id)
-            processing_end_giveaway_message_ids.remove(message_id)
         except Exception as e:
-            processing_end_giveaway_message_ids.remove(message_id)
             pretty_log(
                 "error",
                 f"Error processing giveaway end for message ID {message_id}: {e}",
             )
             continue  # Continue processing other giveaways even if one fails
+        finally:
+            processing_end_giveaway_message_ids.discard(message_id)

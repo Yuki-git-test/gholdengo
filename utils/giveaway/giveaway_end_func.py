@@ -1,6 +1,7 @@
 import random
 import re
 import time
+import asyncio
 
 import discord
 from discord.ext import commands
@@ -44,6 +45,46 @@ from utils.visuals.colors import get_random_ghouldengo_color
 from utils.visuals.design_embed import design_embed
 from utils.visuals.pretty_defer import pretty_defer
 from utils.visuals.thumbnails import random_ga_thumbnail_url
+
+
+async def fetch_message_with_retry(
+    channel: discord.abc.Messageable,
+    message_id: int,
+    *,
+    max_attempts: int = 4,
+    base_delay_seconds: float = 1.5,
+    log_label: str = "🎉 GIVEAWAY",
+):
+    """Fetch a Discord message with retries for transient server/network failures."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await channel.fetch_message(message_id)
+        except discord.NotFound:
+            raise
+        except discord.Forbidden:
+            raise
+        except discord.DiscordServerError as e:
+            if attempt >= max_attempts:
+                raise
+            delay = base_delay_seconds * (2 ** (attempt - 1))
+            pretty_log(
+                "warn",
+                f"Transient Discord server error while fetching message {message_id} (attempt {attempt}/{max_attempts}): {e}. Retrying in {delay:.1f}s.",
+                label=log_label,
+            )
+            await asyncio.sleep(delay)
+        except discord.HTTPException as e:
+            status = getattr(e, "status", None)
+            is_retryable = status is not None and status >= 500
+            if not is_retryable or attempt >= max_attempts:
+                raise
+            delay = base_delay_seconds * (2 ** (attempt - 1))
+            pretty_log(
+                "warn",
+                f"Transient HTTP error while fetching message {message_id} (status {status}, attempt {attempt}/{max_attempts}). Retrying in {delay:.1f}s.",
+                label=log_label,
+            )
+            await asyncio.sleep(delay)
 
 
 async def pick_winners(
@@ -241,11 +282,22 @@ async def end_giveaway_handler(
         )
         return
     try:
-        message = await channel.fetch_message(message_id)
+        message = await fetch_message_with_retry(
+            channel,
+            message_id,
+            log_label="Giveaway End Handler",
+        )
     except discord.NotFound:
         pretty_log(
             "error",
             f"Message with ID {message_id} not found in channel {channel_id} for giveaway ID {giveaway_id}",
+            label="Giveaway End Handler",
+        )
+        return
+    except discord.Forbidden:
+        pretty_log(
+            "error",
+            f"Missing access to fetch message ID {message_id} in channel {channel_id} for giveaway ID {giveaway_id}",
             label="Giveaway End Handler",
         )
         return
