@@ -191,7 +191,7 @@ def update_lottery_embed_with_winners(embed: discord.Embed, winners):
 
 def update_tickets_sold(embed: discord.Embed, tickets: str):
     for field in embed.fields:
-        if field.name == "Sold Tickets":
+        if field.name.endswith("Sold Tickets"):
             embed.set_field_at(
                 embed.fields.index(field),
                 name=f"{TICKET_EMOJI} Sold Tickets",

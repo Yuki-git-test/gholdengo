@@ -1,9 +1,10 @@
 import random
 import time
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
+
 from Constants.vn_allstars_constants import (
     KHY_USER_ID,
     VN_ALLSTARS_EMOJIS,
@@ -19,8 +20,10 @@ from utils.db.lottery import (
     update_prize,
     update_total_tickets,
 )
+from utils.db.lottery_entries import fetch_lottery_entry, update_lottery_entry
 from utils.essentials.parsers import parse_compact_number
 from utils.essentials.role_checks import *
+from utils.functions.pokemon_func import format_price_w_coin
 from utils.functions.webhook_func import send_webhook
 from utils.group_command_func.lottery.pokemon import if_testing_lottery
 from utils.listener_func.buy_lottery_ticket_listener import (
@@ -30,11 +33,12 @@ from utils.listener_func.buy_lottery_ticket_listener import (
     update_current_pot,
     update_tickets_sold,
 )
-from utils.functions.pokemon_func import format_price_w_coin
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.pretty_defer import pretty_defer
-from utils.db.lottery_entries import fetch_lottery_entry, update_lottery_entry
+
 from .add import is_processing_lottery
+
+
 async def remove_lottery_tickets_func(
     bot: commands.Bot,
     interaction: discord.Interaction,
@@ -85,22 +89,34 @@ async def remove_lottery_tickets_func(
     lottery_type = lottery_info["lottery_type"]
 
     # Fetch user's current lottery entry
-    user_lottery_info = await fetch_lottery_entry(bot, lottery_id=lottery_id, user_id=member_id)
+    user_lottery_info = await fetch_lottery_entry(
+        bot, lottery_id=lottery_id, user_id=member_id
+    )
     if not user_lottery_info:
         await loader.error("That user doesn't have any tickets in this lottery.")
         return
 
-    # Calculate new ticket total and ensure it doesn't go below 0
+    # Calculate tickets to remove based on user's current entries.
+    # This prevents subtracting more than the user owns and desyncing totals.
     current_tickets = user_lottery_info["entries"]
-    new_user_ticket_total = max(current_tickets - amount, 0)
-    new_lottery_total_tickets = max(total_tickets - amount, 0)
+    tickets_to_remove = min(amount, current_tickets)
+    new_user_ticket_total = current_tickets - tickets_to_remove
 
-    # Compute new prize pool based on new total tickets
-    new_pot = new_lottery_total_tickets * ticket_cost
+    current_lottery_total_tickets = await get_total_tickets(bot, lottery_id=lottery_id)
+    new_lottery_total_tickets = max(
+        current_lottery_total_tickets - tickets_to_remove,
+        0,
+    )
+
     # Update the database with the new ticket totals
-    await update_total_tickets(bot, lottery_id=lottery_id, new_total_tickets=new_lottery_total_tickets)
-    await update_prize(bot, lottery_id=lottery_id, new_prize=str(new_pot))
-    await update_lottery_entry(bot, lottery_id=lottery_id, user_id=member_id, entries=new_user_ticket_total)
+    await update_total_tickets(
+        bot,
+        lottery_id=lottery_id,
+        total_tickets=new_lottery_total_tickets,
+    )
+    await update_lottery_entry(
+        bot, lottery_id=lottery_id, user_id=member_id, entries=new_user_ticket_total
+    )
 
     # Update the lottery message embed with the new prize pool and total tickets
     # Edit embed
@@ -153,13 +169,17 @@ async def remove_lottery_tickets_func(
             )
             return
     # Log and send webhook
-    lottery_link = f"https://discord.com/channels/{interaction.guild_id}/{channel_id}/{message_id}"
-    new_prize_formatted = format_price_w_coin(new_pot) if lottery_type == "coin" else new_pot
-    new_prize_pool_str = f"New Prize Pool: {new_prize_formatted}" if lottery_type == "coin" else ""
+    lottery_link = (
+        f"https://discord.com/channels/{interaction.guild_id}/{channel_id}/{message_id}"
+    )
+    new_prize_formatted = format_price_w_coin(new_pot) if lottery_type == "coin" else ""
+    new_prize_pool_str = (
+        f"New Prize Pool: {new_prize_formatted}" if lottery_type == "coin" else ""
+    )
     desc = (
         f"**Lottery ID:** {lottery_id}\n"
         f"**Member:** {member.mention}\n"
-        f"**Tickets Remove:** {total_tickets}\n"
+        f"**Tickets Removed:** {tickets_to_remove}\n"
         f"**Total Tickets:** {new_user_ticket_total}\n"
         f"{new_prize_pool_str}\n"
     )
@@ -170,7 +190,9 @@ async def remove_lottery_tickets_func(
         timestamp=datetime.now(),
         url=lottery_link,
     )
-    log_embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
+    log_embed.set_author(
+        name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url
+    )
     log_embed.set_thumbnail(url=member.display_avatar.url)
     log_channel = bot.get_channel(VN_ALLSTARS_TEXT_CHANNELS.server_log)
     if log_channel:
@@ -179,6 +201,3 @@ async def remove_lottery_tickets_func(
             channel=log_channel,
             embed=log_embed,
         )
-        
-
-
