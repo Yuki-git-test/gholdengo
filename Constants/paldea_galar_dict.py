@@ -1442,7 +1442,7 @@ def get_rarity_by_color(color_value):
         'rare'
     """
     for rarity_name, rarity_data in rarity_meta.items():
-        if rarity_data["color"] == color_value:
+        if rarity_data.get("color") == color_value:
             return rarity_name
     return "unknown"
 
