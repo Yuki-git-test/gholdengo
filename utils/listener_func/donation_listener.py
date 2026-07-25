@@ -10,7 +10,7 @@ from Constants.vn_allstars_constants import (
     KHY_USER_ID,
     MIN_DONATION_AMOUNT,
     VN_ALLSTARS_TEXT_CHANNELS,
-    YUKI_USER_ID,
+    HARMLESS_USER_ID,
 )
 from utils.db.donations_db import (
     fetch_donation_record,
@@ -29,7 +29,7 @@ from utils.group_command_func.donation.update import (
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.design_embed import design_embed
 
-CLAN_BANK_IDS = [CLAN_BANK_ID, YUKI_USER_ID]
+CLAN_BANK_IDS = [CLAN_BANK_ID, HARMLESS_USER_ID]
 
 LOG_CHANNEL_ID = VN_ALLSTARS_TEXT_CHANNELS.member_logs
 

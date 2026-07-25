@@ -11,7 +11,7 @@ from Constants.vn_allstars_constants import (
     VN_ALLSTARS_EMOJIS,
     VN_ALLSTARS_ROLES,
     VN_ALLSTARS_TEXT_CHANNELS,
-    YUKI_USER_ID,
+    HARMLESS_USER_ID,
 )
 from utils.cache.cache_list import (
     processing_end_lottery_ids,

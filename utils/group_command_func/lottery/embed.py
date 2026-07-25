@@ -63,7 +63,7 @@ def create_pokemon_lottery_embed(
     )
     buying_instructions = (
         f"To buy a ticket, use the command below in the lottery thread:\n"
-        f";gift <@705447976658665552>  <amount> "
+        f";gift <@715486300383477823>  <amount> "
     )
     desc = top_line + "\n\n" + desc + "\n" + buying_instructions
     embed = discord.Embed(description=desc, color=embed_color)
@@ -109,7 +109,7 @@ def create_coin_lottery_embed(
     )
     buying_instructions = (
         f"To buy a ticket, use the command below in the lottery thread:\n"
-        f";gift <@705447976658665552>  <amount> "
+        f";gift <@715486300383477823>  <amount> "
     )
 
     desc = top_line + "\n\n" + desc + "\n" + buying_instructions
