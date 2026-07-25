@@ -1,15 +1,20 @@
 import random
 import time
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
+
 from Constants.vn_allstars_constants import (
     KHY_USER_ID,
     VN_ALLSTARS_EMOJIS,
     VN_ALLSTARS_ROLES,
     VN_ALLSTARS_TEXT_CHANNELS,
     YUKI_USER_ID,
+)
+from utils.cache.cache_list import (
+    processing_end_lottery_ids,
+    processing_lottery_purchase_ids,
 )
 from utils.cache.global_variables import TESTING_LOTTERY
 from utils.db.lottery import (
@@ -18,6 +23,7 @@ from utils.db.lottery import (
     is_lottery_active,
     update_prize,
 )
+from utils.db.lottery_entries import fetch_lottery_entry
 from utils.essentials.parsers import parse_compact_number
 from utils.essentials.role_checks import *
 from utils.functions.webhook_func import send_webhook
@@ -31,16 +37,22 @@ from utils.listener_func.buy_lottery_ticket_listener import (
 )
 from utils.logs.pretty_log import pretty_log
 from utils.visuals.pretty_defer import pretty_defer
-from utils.db.lottery_entries import fetch_lottery_entry
-from utils.cache.cache_list import processing_lottery_purchase_ids, processing_end_lottery_ids
+
 
 def is_processing_lottery(message_id: int) -> bool:
     """Checks if a lottery purchase or end lottery is currently being processed for the given message ID."""
     if message_id in processing_lottery_purchase_ids:
-        return True, f"Another lottery purchase is currently being processed for this lottery (message ID: {message_id}). Please wait a moment and try again."
+        return (
+            True,
+            f"Another lottery purchase is currently being processed for this lottery (message ID: {message_id}). Please wait a moment and try again.",
+        )
     if message_id in processing_end_lottery_ids:
-        return True, f"The lottery is currently ending for this lottery (message ID: {message_id}). Please wait a moment and try again."
+        return (
+            True,
+            f"The lottery is currently ending for this lottery (message ID: {message_id}). Please wait a moment and try again.",
+        )
     return False, None
+
 
 async def add_lottery_tickets_func(
     bot: commands.Bot,
@@ -72,7 +84,7 @@ async def add_lottery_tickets_func(
     if is_processing:
         await loader.error(processing_message)
         return
-    
+
     # Parse amount
     try:
         amount = parse_compact_number(amount)
@@ -175,11 +187,15 @@ async def add_lottery_tickets_func(
             )
             return
     # Log embed
-    user_lottery_info = await fetch_lottery_entry(bot, lottery_id=lottery_id, user_id=member_id)
+    user_lottery_info = await fetch_lottery_entry(
+        bot, lottery_id=lottery_id, user_id=member_id
+    )
     user_new_total_tickets = (
         user_lottery_info["entries"] if user_lottery_info else total_tickets
     )
-    lottery_link = f"https://discord.com/channels/{interaction.guild_id}/{channel_id}/{message_id}"
+    lottery_link = (
+        f"https://discord.com/channels/{interaction.guild_id}/{channel_id}/{message_id}"
+    )
     desc = (
         f"**Lottery ID:** {lottery_id}\n"
         f"**Member:** {member.mention}\n"
@@ -193,7 +209,9 @@ async def add_lottery_tickets_func(
         color=discord.Color.green(),
         timestamp=datetime.now(),
     )
-    log_embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
+    log_embed.set_author(
+        name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url
+    )
     log_embed.set_thumbnail(url=member.display_avatar.url)
     log_channel = bot.get_channel(VN_ALLSTARS_TEXT_CHANNELS.server_log)
     if log_channel:
@@ -202,6 +220,9 @@ async def add_lottery_tickets_func(
             channel=log_channel,
             embed=log_embed,
         )
+    # Send success response
+    await loader.success(content=None, embed=log_embed)
+
     # Check if max tickets has been reached and end lottery if so
     if max_tickets != 0 and new_tickets_sold >= max_tickets:
         pretty_log(

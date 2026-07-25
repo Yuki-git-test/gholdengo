@@ -55,7 +55,7 @@ async def remove_lottery_tickets_func(
     # Defer
     loader = await pretty_defer(
         interaction=interaction,
-        content="Adding lottery tickets...",
+        content="Removing lottery tickets...",
         ephemeral=False,
     )
 
@@ -185,7 +185,7 @@ async def remove_lottery_tickets_func(
     )
     log_embed = discord.Embed(
         title="Lottery Tickets Removed",
-        description=f"{amount} tickets removed from {member.mention} in lottery ID {lottery_id}.",
+        description=desc,
         color=discord.Color.red(),
         timestamp=datetime.now(),
         url=lottery_link,
@@ -201,3 +201,5 @@ async def remove_lottery_tickets_func(
             channel=log_channel,
             embed=log_embed,
         )
+    # Send success response
+    await loader.success(content=None, embed=log_embed)
