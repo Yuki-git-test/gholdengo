@@ -33,7 +33,7 @@ MARKET_FEED_CHANNEL_IDS = {
     VN_ALLSTARS_TEXT_CHANNELS.l_m_gmax_feed,
 }
 
-CLAN_BANK_USER_NAMES = ["yki.on", "beaterxyz"]
+CLAN_BANK_USER_NAMES = ["yki.on", "beaterxyz", "harmless87"]
 
 
 def embed_has_field_name(embed, name_to_match: str) -> bool:
