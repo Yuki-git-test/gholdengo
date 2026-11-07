@@ -323,6 +323,7 @@ async def set_market_value(
     listing_seen: str | None = None,
     image_link: str = None,
     rarity: str = "unknown",
+    monthly_average: int = 0,
 ):
     """
     Insert or update market value data for a Pokémon.
@@ -333,9 +334,9 @@ async def set_market_value(
                 """
                 INSERT INTO market_value (
                     pokemon_name, dex_number, is_exclusive, lowest_market,
-                    current_listing, true_lowest, listing_seen, image_link, last_updated, rarity
+                    current_listing, true_lowest, listing_seen, image_link, last_updated, rarity, monthly_average
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (pokemon_name) DO UPDATE SET
                     dex_number = $2,
                     is_exclusive = $3,
@@ -345,7 +346,8 @@ async def set_market_value(
                     listing_seen = COALESCE($7, market_value.listing_seen),
                     image_link = COALESCE($8, market_value.image_link),
                     last_updated = $9,
-                    rarity = COALESCE($10, market_value.rarity)
+                    rarity = COALESCE($10, market_value.rarity),
+                    monthly_average = $11
                 """,
                 pokemon_name.lower(),
                 dex_number,
@@ -357,6 +359,7 @@ async def set_market_value(
                 image_link,
                 datetime.utcnow(),
                 rarity,
+                monthly_average,
             )
 
         pretty_log(
@@ -698,6 +701,7 @@ async def update_market_value(
     listing_seen: str,
     image_link: str = None,
     is_exclusive: bool = None,
+    monthly_average: int = 0,
 ):
     """
     Update specific fields of market value data for a Pokémon.
@@ -709,9 +713,9 @@ async def update_market_value(
             await conn.execute(
                 """
                 INSERT INTO market_value (
-                    pokemon_name, lowest_market, listing_seen, last_updated, image_link, is_exclusive
+                    pokemon_name, lowest_market, listing_seen, last_updated, image_link, is_exclusive, monthly_average
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (pokemon_name) DO UPDATE SET
                     lowest_market = $2,
                     listing_seen = $3,
@@ -719,6 +723,7 @@ async def update_market_value(
                     """
                 + (", image_link = $5" if image_link is not None else "")
                 + (", is_exclusive = $6" if is_exclusive is not None else "")
+                + ", monthly_average = $7"
                 + " WHERE market_value.pokemon_name = $1",
                 pokemon_name,
                 lowest_market,
@@ -726,6 +731,7 @@ async def update_market_value(
                 datetime.utcnow(),
                 image_link if image_link is not None else None,
                 is_exclusive if is_exclusive is not None else None,
+                monthly_average,
             )
             # Update in cache as well
             if pokemon_name in market_value_cache:
@@ -743,6 +749,7 @@ async def update_market_value(
                     "listing_seen": listing_seen,
                     "image_link": image_link if image_link is not None else None,
                     "is_exclusive": is_exclusive if is_exclusive is not None else False,
+                    "monthly_average": monthly_average,
                 }
 
         pretty_log(
@@ -991,9 +998,9 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     """
                     INSERT INTO market_value (
                         pokemon_name, dex_number, is_exclusive, lowest_market,
-                        current_listing, true_lowest, listing_seen, last_updated, rarity, image_link
+                        current_listing, true_lowest, listing_seen, last_updated, rarity, image_link, monthly_average
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     ON CONFLICT (pokemon_name) DO UPDATE SET
                         dex_number = $2,
                         is_exclusive = $3,
@@ -1003,7 +1010,8 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                         listing_seen = COALESCE($7, market_value.listing_seen),
                         last_updated = $8,
                         rarity = COALESCE($9, market_value.rarity),
-                        image_link = COALESCE($10, market_value.image_link)
+                        image_link = COALESCE($10, market_value.image_link),
+                        monthly_average = $11
                     """,
                     pokemon_name.lower(),
                     data.get("dex_number", 0),
@@ -1015,6 +1023,7 @@ async def sync_market_cache_to_db(bot, market_cache: dict):
                     datetime.utcnow(),
                     data.get("rarity", "unknown"),
                     data.get("image_link", None),
+                    data.get("monthly_average", 0),
                 )
                 update_count += 1
 
@@ -1069,6 +1078,7 @@ async def load_market_cache_from_db(bot) -> dict:
                     "listing_seen": row["listing_seen"],
                     "image_link": row.get("image_link", None),
                     "rarity": row.get("rarity", "unknown"),
+                    "monthly_average": row.get("monthly_average", 0),
                 }
 
         """pretty_log(

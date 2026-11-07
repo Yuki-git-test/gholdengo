@@ -82,7 +82,7 @@ async def market_snipe_handler(
     poke_name: str,
     listed_price: int,
     id: str,
-    lowest_market: int,
+    monthly_average: int,
     amount: int,
     listing_seen: str,
     guild: discord.Guild,
@@ -170,10 +170,10 @@ async def market_snipe_handler(
         )
         new_embed.add_field(name="Amount", value=str(amount), inline=True)
         new_embed.add_field(
-            name="Lowest Market",
+            name="Monthly Average",
             value=(
-                f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {int(lowest_market):,}"
-                if isinstance(lowest_market, (int, float)) and lowest_market != "?"
+                f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {int(monthly_average):,}"
+                if isinstance(monthly_average, (int, float)) and monthly_average != "?"
                 else f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} ?"
             ),
             inline=True,
@@ -224,7 +224,7 @@ async def handle_market_alert(
     channel_id: int,
     role_id: int,
     amount: int,
-    lowest_market: int,
+    monthly_average: int,
     listing_seen: str,
     embed: discord.Embed,
 ):
@@ -256,11 +256,12 @@ async def handle_market_alert(
         inline=True,
     )
     alert_embed.add_field(name="Amount", value=amount, inline=True)
-    alert_embed.add_field(
-        name="Lowest Market",
-        value=f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {lowest_market:,}",
-        inline=True,
-    )
+    if monthly_average > 0:
+        alert_embed.add_field(
+            name="Monthly Average",
+            value=f"{VN_ALLSTARS_EMOJIS.vna_pokecoin} {monthly_average:,}",
+            inline=True,
+        )
     alert_embed.add_field(
         name="Listing Seen",
         value=listing_seen,
@@ -328,7 +329,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             fields = {f.name: f.value for f in embed.fields}
             debug_log(f"Embed fields: {fields}")
 
-            # Extract Listed Price and Lowest Market, removing any emojis
+            # Extract Listed Price and Monthly Average, removing any emojis
             listed_price_str = re.sub(
                 r"<a?:\w+:\d+>", "", fields.get("Listed Price", "0")
             )
@@ -338,20 +339,34 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             )
             debug_log(f"Parsed listed_price: {listed_price}")
 
-            lowest_market_str = re.sub(
-                r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
+            monthly_average_str = re.sub(
+                r"<a?:\w+:\d+>", "", fields.get("Monthly Average", "0")
             )
-            lowest_market_match = re.search(r"(\d[\d,]*)", lowest_market_str)
-            lowest_market = (
-                int(lowest_market_match.group(1).replace(",", ""))
-                if lowest_market_match
+            monthly_average_match = re.search(r"(\d[\d,]*)", monthly_average_str)
+            monthly_average = (
+                int(monthly_average_match.group(1).replace(",", ""))
+                if monthly_average_match
                 else 0
             )
-            debug_log(f"Parsed lowest_market: {lowest_market}")
+            debug_log(f"Parsed monthly_average: {monthly_average}")
 
             listing_seen = fields.get("Listing Seen", "N/A")
             amount = fields.get("Amount", "1")
             debug_log(f"Parsed listing_seen: {listing_seen}, amount: {amount}")
+
+            # Extract Lowest Market, removing any emojis (handles new embed format where field may not exist)
+            lowest_market = 0
+            if "Lowest Market" in fields:
+                lowest_market_str = re.sub(
+                    r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
+                )
+                lowest_market_match = re.search(r"(\d[\d,]*)", lowest_market_str)
+                lowest_market = (
+                    int(lowest_market_match.group(1).replace(",", ""))
+                    if lowest_market_match
+                    else 0
+                )
+            debug_log(f"Parsed lowest_market: {lowest_market} (field_exists: {'Lowest Market' in fields})")
 
             original_id = fields.get("ID", "0")
             # Robustly handle embed.color
@@ -376,14 +391,14 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             debug_log(f"Market Feed ID {original_id}")
             processed_market_feed_ids.add(original_id)
 
-            if listed_price == 0 or lowest_market == 0:
-                debug_log(f"Skipping listing {original_id}: listed_price={listed_price}, lowest_market={lowest_market}")
+            if listed_price == 0 or monthly_average == 0:
+                debug_log(f"Skipping listing {original_id}: listed_price={listed_price}, monthly_average={monthly_average}")
                 continue
 
             # If Listed Price is 30% or more below Lowest Market, it's a snipe
-            if lowest_market > 0 and listed_price <= lowest_market * 0.7 and listed_price > 0:
+            if monthly_average > 0 and listed_price <= monthly_average * 0.7 and listed_price > 0:
                 debug_log(
-                    f"Snipe detected for {poke_name} at price {listed_price} (lowest market: {lowest_market})"
+                    f"Snipe detected for {poke_name} at price {listed_price} (monthly average: {monthly_average})"
                 )
 
                 try:
@@ -392,7 +407,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                         poke_name=poke_name,
                         listed_price=listed_price,
                         id=original_id,
-                        lowest_market=lowest_market,
+                        monthly_average=monthly_average,
                         amount=int(amount),
                         listing_seen=listing_seen,
                         guild=message.guild,
@@ -443,7 +458,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                         channel_id=channel_id,
                         role_id=role_id,
                         amount=amount,
-                        lowest_market=lowest_market,
+                        monthly_average=monthly_average,
                         listing_seen=listing_seen,
                         embed=embed,
                     )
@@ -456,15 +471,6 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 poke_name, author_icon_url, embed_color
             )
             poke_dex = int(poke_dex)
-            lowest_market_str = re.sub(
-                r"<a?:\w+:\d+>", "", fields.get("Lowest Market", "0")
-            )
-            lowest_market_match = re.search(r"(\d[\d,]*)", lowest_market_str)
-            lowest_market = (
-                int(lowest_market_match.group(1).replace(",", ""))
-                if lowest_market_match
-                else 0
-            )
 
             listing_seen = fields.get("Listing Seen", "Unknown")
 
@@ -475,22 +481,15 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             existing_data = market_value_cache.get(cache_key, {})
             existing_lowest = existing_data.get("true_lowest", float("inf"))
 
-            # Ensure all values are not None for min/max
-            price_candidates = [listed_price, lowest_market, existing_lowest]
-            price_candidates = [p for p in price_candidates if p is not None]
+            # Build price candidates, excluding lowest_market if it's 0 (field not provided in embed)
+            price_candidates = [listed_price, existing_lowest]
+            if lowest_market > 0:  # Only include lowest_market if it was actually provided
+                price_candidates.append(lowest_market)
+            price_candidates = [p for p in price_candidates if p is not None and p > 0]
             if price_candidates:
                 true_lowest = min(price_candidates)
             else:
                 true_lowest = 0
-
-            # Only update if we have a valid price (not 0)
-            if true_lowest == float("inf") or true_lowest == 0:
-                max_candidates = [listed_price, lowest_market]
-                max_candidates = [p for p in max_candidates if p is not None]
-                if max_candidates and max(max_candidates) > 0:
-                    true_lowest = max(max_candidates)
-                else:
-                    true_lowest = 0
 
             # Only update DB if any value has changed
             cache_update = {
@@ -503,6 +502,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 "listing_seen": listing_seen,
                 "image_link": thumbnail_url,
                 "rarity": market_value_rarity,
+                "monthly_average": monthly_average,
             }
             prev = market_value_cache.get(cache_key, {})
             needs_update = (
@@ -514,6 +514,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                 or prev.get("is_exclusive") != is_exclusive
                 or prev.get("image_link") != thumbnail_url
                 or prev.get("rarity") != market_value_rarity
+                or prev.get("monthly_average") != monthly_average
             )
             market_value_cache[cache_key] = cache_update
             if needs_update:
@@ -528,6 +529,7 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     listing_seen=listing_seen,
                     image_link=thumbnail_url,
                     rarity=market_value_rarity,
+                    monthly_average=monthly_average,
                 )
                 pretty_log(
                     "debug",
