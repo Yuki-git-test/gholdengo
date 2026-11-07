@@ -11,10 +11,7 @@ from utils.db.market_value_db import (
     fetch_image_link_cache,
     fetch_pokemon_exclusivity_cache,
     fetch_rarity_cache,
-    update_dex_number,
-    update_is_exclusive,
-    update_rarity,
-    upsert_image_link,
+    update_market_value_fields,
 )
 from utils.functions.pokemon_func import is_mon_exclusive
 from utils.logs.debug_log import debug_log, enable_debug
@@ -111,38 +108,39 @@ async def dex_listener(bot, message: discord.Message):
     image_link_cache = fetch_image_link_cache(pokemon_name)
     existing_exclusive_status = fetch_pokemon_exclusivity_cache(pokemon_name)
     is_exclusive = is_mon_exclusive(pokemon_name)
-    if existing_exclusive_status != is_exclusive and is_exclusive == False:
-        new_exclusive = is_exclusive
-        await update_is_exclusive(bot, pokemon_name, new_exclusive)
-    else:
-        new_exclusive = existing_exclusive_status
+    new_exclusive = existing_exclusive_status
+
+    updates = {}
+    update_logs = []
+
+    if existing_exclusive_status != is_exclusive and is_exclusive is False:
+        new_exclusive = False
+        updates["is_exclusive"] = new_exclusive
+
     if embed_image_url and image_link_cache != embed_image_url:
-        await upsert_image_link(bot, pokemon_name, embed_image_url, new_exclusive)
-        debug_log(
+        updates["image_link"] = embed_image_url
+        if new_exclusive is not None:
+            updates["is_exclusive"] = new_exclusive
+        update_logs.append(
             f"Updated image link for {pokemon_name} to {embed_image_url} based on mh lookup command output."
         )
-        pretty_log(
-            "info",
-            f"Updated image link for {pokemon_name} to {embed_image_url} based on mh lookup command output.",
-        )
+
     old_dex_number = fetch_dex_number_cache(pokemon_name)
     if dex_number and str(old_dex_number) != str(dex_number):
-        dex_number = int(dex_number)
-        await update_dex_number(bot, pokemon_name, dex_number)
-        debug_log(
+        updates["dex_number"] = int(dex_number)
+        update_logs.append(
             f"Updated dex number for {pokemon_name} to {dex_number} based on mh lookup command output."
         )
-        pretty_log(
-            "info",
-            f"Updated dex number for {pokemon_name} to {dex_number} based on mh lookup command output.",
-        )
+
     old_rarity = fetch_rarity_cache(pokemon_name)
     rarity = extract_rarity_from_embed(embed)
 
     if rarity and old_rarity != rarity:
-        await update_rarity(bot, pokemon_name, rarity)
-        debug_log(f"Updated rarity for {pokemon_name} to {rarity}.")
-        pretty_log(
-            "info",
-            f"Updated rarity for {pokemon_name} to {rarity}.",
-        )
+        updates["rarity"] = rarity
+        update_logs.append(f"Updated rarity for {pokemon_name} to {rarity}.")
+
+    if updates:
+        await update_market_value_fields(bot, pokemon_name, **updates)
+        for log_msg in update_logs:
+            debug_log(log_msg)
+            pretty_log("info", log_msg)

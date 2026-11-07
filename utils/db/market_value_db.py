@@ -807,6 +807,82 @@ async def update_is_exclusive(
         )
 
 
+async def update_market_value_fields(bot, pokemon_name: str, **updates):
+    """Update dex-listener fields together, inserting a row when an image is available."""
+    allowed_fields = {"image_link", "is_exclusive", "dex_number", "rarity"}
+    invalid_fields = updates.keys() - allowed_fields
+    if invalid_fields:
+        raise ValueError(f"Unsupported market value fields: {sorted(invalid_fields)}")
+
+    updates = {field: value for field, value in updates.items() if value is not None}
+    if not updates:
+        return
+
+    pokemon_name = pokemon_name.lower()
+    fields = list(updates)
+    if "image_link" in updates:
+        columns = ["pokemon_name", *fields, "last_updated"]
+        placeholders = [f"${index}" for index in range(1, len(columns) + 1)]
+        assignments = [
+            f"{field} = ${index}"
+            for index, field in enumerate(fields, start=2)
+        ]
+        assignments.append(f"last_updated = ${len(columns)}")
+        query = (
+            f"INSERT INTO market_value ({', '.join(columns)}) "
+            f"VALUES ({', '.join(placeholders)}) "
+            f"ON CONFLICT (pokemon_name) DO UPDATE SET {', '.join(assignments)}"
+        )
+        values = [pokemon_name, *updates.values(), datetime.utcnow()]
+    else:
+        assignments = [
+            f"{field} = ${index}" for index, field in enumerate(fields, start=1)
+        ]
+        timestamp_index = len(fields) + 1
+        pokemon_index = timestamp_index + 1
+        assignments.append(f"last_updated = ${timestamp_index}")
+        query = (
+            f"UPDATE market_value SET {', '.join(assignments)} "
+            f"WHERE pokemon_name = ${pokemon_index}"
+        )
+        values = [*updates.values(), datetime.utcnow(), pokemon_name]
+
+    try:
+        async with bot.pg_pool.acquire() as conn:
+            if "image_link" in updates:
+                await conn.execute(query, *values)
+            else:
+                row = await conn.fetchrow(
+                    f"{query} RETURNING pokemon_name", *values
+                )
+                if not row:
+                    pretty_log(
+                        tag="db",
+                        message=f"No market value row found for {pokemon_name}, skipping update.",
+                    )
+                    return
+
+        if pokemon_name in market_value_cache:
+            market_value_cache[pokemon_name].update(updates)
+        elif "image_link" in updates:
+            market_value_cache[pokemon_name] = {
+                "pokemon": pokemon_name,
+                "is_exclusive": updates.get("is_exclusive", False),
+                **updates,
+            }
+
+        pretty_log(
+            tag="db",
+            message=f"Updated market value fields for {pokemon_name}: {', '.join(fields)}",
+        )
+    except Exception as e:
+        pretty_log(
+            tag="error",
+            message=f"Failed to update market value fields for {pokemon_name}: {e}",
+        )
+        raise
+
+
 # --------------------
 #  Fetch single Pokémon market value
 # --------------------

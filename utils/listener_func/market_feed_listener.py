@@ -4,25 +4,16 @@ import re
 import discord
 
 # If colors are different just check terminal and update the one in rarity_meta
-from Constants.paldea_galar_dict import (
-    Legendary_icon_url,
-    get_rarity_by_color,
-    icon_url_map,
-    paldean_mons,
-    rarity_meta,
-)
-from Constants.vn_allstars_constants import (
-    VN_ALLSTARS_EMOJIS,
-    VN_ALLSTARS_ROLES,
-    VN_ALLSTARS_TEXT_CHANNELS,
-)
-from utils.cache.cache_list import (
-    _market_alert_index,
-    market_alert_cache,
-    market_value_cache,
-    processed_market_feed_ids,
-    processed_market_feed_message_ids,
-)
+from Constants.paldea_galar_dict import (Legendary_icon_url,
+                                         get_rarity_by_color, icon_url_map,
+                                         paldean_mons, rarity_meta)
+from Constants.vn_allstars_constants import (VN_ALLSTARS_EMOJIS,
+                                             VN_ALLSTARS_ROLES,
+                                             VN_ALLSTARS_TEXT_CHANNELS)
+from utils.cache.cache_list import (_market_alert_index, market_alert_cache,
+                                    market_value_cache,
+                                    processed_market_feed_ids,
+                                    processed_market_feed_message_ids)
 from utils.db.market_value_db import set_market_value
 from utils.functions.webhook_func import send_webhook
 from utils.logs.debug_log import debug_log, enable_debug
@@ -385,8 +376,12 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
             debug_log(f"Market Feed ID {original_id}")
             processed_market_feed_ids.add(original_id)
 
+            if listed_price == 0 or lowest_market == 0:
+                debug_log(f"Skipping listing {original_id}: listed_price={listed_price}, lowest_market={lowest_market}")
+                continue
+
             # If Listed Price is 30% or more below Lowest Market, it's a snipe
-            if lowest_market > 0 and listed_price <= lowest_market * 0.7:
+            if lowest_market > 0 and listed_price <= lowest_market * 0.7 and listed_price > 0:
                 debug_log(
                     f"Snipe detected for {poke_name} at price {listed_price} (lowest market: {lowest_market})"
                 )
@@ -405,31 +400,6 @@ async def market_feeds_listener(bot: discord.Client, message: discord.Message):
                     )
                 except Exception as e:
                     debug_log(f"Exception in market_snipe_handler: {e}", highlight=True)
-            elif lowest_market == 0:
-                # First listing, no lowest market to compare
-                pretty_log(
-                    "info",
-                    f"First listing detected for {display_pokemon_name} with ID {original_id}. Treating as potential snipe.",
-                )
-                lowest_market = "?"
-                try:
-                    await market_snipe_handler(
-                        bot=bot,
-                        poke_name=poke_name,
-                        listed_price=listed_price,
-                        id=original_id,
-                        lowest_market=lowest_market,
-                        amount=int(amount),
-                        listing_seen=listing_seen,
-                        guild=message.guild,
-                        embed=embed,
-                    )
-                except Exception as e:
-                    debug_log(f"Exception in market_snipe_handler: {e}", highlight=True)
-                    pretty_log(
-                        "error",
-                        f"Error handling market snipe for {display_pokemon_name} with ID {original_id}: {e}",
-                    )
 
             # Check for market alerts
             if not market_alert_cache:
