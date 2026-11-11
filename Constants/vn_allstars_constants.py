@@ -804,7 +804,7 @@ class VN_ALLSTARS_EMOJIS:
     vna_frogheart = "<:vna_frogHeart:1169178747962921011>"
     vna_pokecoin = "<:vna_pokecoin:1173890257285042227>"
     vna_legendary = "<:vna_Legendary:1174392567123693578>"
-    vna_shiny = "<:vna_Shiny:1174392598211858604>"
+    vna_shiny = "<:Shiny:1570142547798663218>"
     vna_rare = "<:vna_Rare:1174392630981971968>"
     vna_golden = "<:vna_Golden:1174392681712062464>"
     vna_superrare = "<:vna_superRare:1174394896266842253>"
